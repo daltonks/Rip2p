@@ -34,7 +34,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="RiptideNetworking, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-          <HintPath>..\packages\RiptideNetworking.Riptide.2.0.0\lib\netstandard2.0\RiptideNetworking.dll</HintPath>
+          <HintPath>packages\RiptideNetworking.Riptide.2.0.0\lib\netstandard2.0\RiptideNetworking.dll</HintPath>
         </Reference>
         <Reference Include="System" />
         <Reference Include="System.Core" />
@@ -53,9 +53,6 @@
     </ItemGroup>
     <ItemGroup>
       <None Include="packages.config" />
-    </ItemGroup>
-    <ItemGroup>
-      <Folder Include="Editor" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
     <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

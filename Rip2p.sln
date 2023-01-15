@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rip2p", "Rip2p\Rip2p.csproj", "{C95A62A6-3CBD-4E44-9A15-63B9F0FAF10D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rip2p", "Rip2p.csproj", "{C95A62A6-3CBD-4E44-9A15-63B9F0FAF10D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
