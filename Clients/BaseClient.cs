@@ -6,15 +6,14 @@ namespace Rip2p.Clients
 {
     public abstract class BaseClient : MonoBehaviour
     {
-        [SerializeField] private bool _isHostClient;
+        [SerializeField] internal bool _isHostClient;
         [SerializeField] private string _address;
         [SerializeField] private ushort _port;
 
         public event Action Disconnected;
         
-        public async Task<bool> ConnectAsync(bool isHostClient, string address, ushort port)
+        public async Task<bool> ConnectAsync(string address, ushort port)
         {
-            _isHostClient = isHostClient;
             _address = address;
             _port = port;
             return await ConnectInternalAsync(address, port);
