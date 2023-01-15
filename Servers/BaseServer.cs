@@ -7,6 +7,9 @@ namespace Rip2p.Servers
         [SerializeField] private ushort _port;
         [SerializeField] private ushort _maxClientCount;
 
+        public ushort Port => _port;
+        public ushort MaxClientCount => _maxClientCount;
+
         public void StartServer(ushort port, ushort maxClientCount)
         {
             _port = port;

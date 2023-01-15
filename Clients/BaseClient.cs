@@ -11,6 +11,9 @@ namespace Rip2p.Clients
         [SerializeField] private ushort _port;
 
         public event Action Disconnected;
+
+        public string Address => _address;
+        public ushort Port => _port;
         
         public async Task<bool> ConnectAsync(string address, ushort port)
         {
