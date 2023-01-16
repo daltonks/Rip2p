@@ -64,7 +64,7 @@ namespace Rip2p.Clients
         
         private void OnMessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            OnMessageReceived(e.Message);
+            OnMessageReceived(e.MessageId, e.Message);
         }
 
         private void FixedUpdate()

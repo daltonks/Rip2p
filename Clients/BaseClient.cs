@@ -1,17 +1,18 @@
 ﻿using System.Threading.Tasks;
+using Rip2p.Peers;
 using Riptide;
 using UnityEngine;
 
 namespace Rip2p.Clients
 {
     public delegate void DisconnectedDelegate(BaseClient client);
-    public delegate void MessageReceivedDelegate(BaseClient client, Message message);
+    public delegate void MessageReceivedDelegate(BaseClient client, ushort messageId, Message message);
 
-    public abstract class BaseClient : MonoBehaviour
+    public abstract class BaseClient : MonoBehaviour, IPeer
     {
         [SerializeField] private bool _isHostLoopbackClient;
-        [SerializeField] private string _address;
-        [SerializeField] private ushort _port;
+        [SerializeField] private string _serverAddress;
+        [SerializeField] private ushort _serverPort;
 
         public event DisconnectedDelegate Disconnected;
         public event MessageReceivedDelegate MessageReceived;
@@ -21,14 +22,14 @@ namespace Rip2p.Clients
             get => _isHostLoopbackClient;
             internal set => _isHostLoopbackClient = value;
         }
-        public string Address => _address;
-        public ushort Port => _port;
+        public string ServerAddress => _serverAddress;
+        public ushort ServerPort => _serverPort;
         public abstract ushort Id { get; }
         
         public async Task<bool> ConnectAsync(string address, ushort port)
         {
-            _address = address;
-            _port = port;
+            _serverAddress = address;
+            _serverPort = port;
             return await ConnectInternalAsync(address, port);
         }
 
@@ -41,9 +42,9 @@ namespace Rip2p.Clients
         
         public abstract void Disconnect();
 
-        protected void OnMessageReceived(Message message)
+        protected void OnMessageReceived(ushort messageId, Message message)
         {
-            MessageReceived?.Invoke(this, message);
+            MessageReceived?.Invoke(this, messageId, message);
         }
         
         public abstract void Send(Message message);

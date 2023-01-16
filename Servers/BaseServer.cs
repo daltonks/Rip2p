@@ -1,12 +1,13 @@
 ﻿using System.Collections.Generic;
+using Rip2p.Servers.Connections;
 using Riptide;
 using UnityEngine;
 
 namespace Rip2p.Servers
 {
-    public delegate void ClientConnectedDelegate(ushort client);
-    public delegate void ClientDisconnectedDelegate(ushort client);
-    public delegate void MessageReceivedDelegate(ushort client, Message message);
+    public delegate void ClientConnectedDelegate(BaseConnection connection);
+    public delegate void ClientDisconnectedDelegate(BaseConnection connection);
+    public delegate void MessageReceivedDelegate(BaseConnection connection, ushort messageId, Message message);
     
     public abstract class BaseServer : MonoBehaviour
     {
@@ -20,8 +21,8 @@ namespace Rip2p.Servers
         public ushort Port => _port;
         public ushort MaxClientCount => _maxClientCount;
 
-        private readonly HashSet<ushort> _clients = new();
-        public IEnumerable<ushort> Clients => _clients;
+        private readonly HashSet<BaseConnection> _clients = new();
+        public IEnumerable<BaseConnection> Clients => _clients;
 
         public void StartServer(ushort port, ushort maxClientCount)
         {
@@ -34,21 +35,21 @@ namespace Rip2p.Servers
         
         public abstract void StopServer();
 
-        protected void OnClientConnected(ushort client)
+        protected void OnClientConnected(BaseConnection connection)
         {
-            _clients.Add(client);
-            ClientConnected?.Invoke(client);
+            _clients.Add(connection);
+            ClientConnected?.Invoke(connection);
         }
 
-        protected void OnClientDisconnected(ushort client)
+        protected void OnClientDisconnected(BaseConnection connection)
         {
-            _clients.Remove(client);
-            ClientDisconnected?.Invoke(client);
+            _clients.Remove(connection);
+            ClientDisconnected?.Invoke(connection);
         }
 
-        protected void OnMessageReceived(ushort client, Message message)
+        protected void OnMessageReceived(BaseConnection connection, ushort messageId, Message message)
         {
-            MessageReceived?.Invoke( client, message);
+            MessageReceived?.Invoke(connection, messageId, message);
         }
 
         public abstract void SendToAll(Message message);

@@ -44,12 +44,10 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="Clients\BaseClient.cs" />
-        <Compile Include="Clients\RiptideClient.cs" />
-        <Compile Include="PeerToPeerSession.cs" />
-        <Compile Include="Properties\AssemblyInfo.cs" />
-        <Compile Include="Servers\BaseServer.cs" />
-        <Compile Include="Servers\RiptideServer.cs" />
+        <Compile Include="Clients\**\*.cs" />
+        <Compile Include="Properties\**\*.cs" />
+        <Compile Include="Servers\**\*.cs" />
+        <Compile Include="*.cs" />
     </ItemGroup>
     <ItemGroup>
       <None Include="packages.config" />

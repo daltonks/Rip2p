@@ -1,9 +1,14 @@
-﻿using Riptide;
+﻿using System.Collections.Generic;
+using Rip2p.Peers;
+using Rip2p.Servers.Connections;
+using Riptide;
 
 namespace Rip2p.Servers
 {
     public class RiptideServer : BaseServer
     {
+        private readonly Dictionary<ushort, RiptideConnection> _connections = new();
+        
         private Server _server;
 
         private void Awake()
@@ -31,12 +36,21 @@ namespace Rip2p.Servers
 
         private void OnClientConnected(object sender, ServerConnectedEventArgs e)
         {
-            OnClientConnected(e.Client.Id);
+            var connection = _connections[e.Client.Id] = new RiptideConnection(e.Client, this);
+            OnClientConnected(connection);
         }
         
         private void OnClientDisconnected(object sender, ServerDisconnectedEventArgs e)
         {
-            OnClientDisconnected(e.Client.Id);
+            if (_connections.TryGetValue(e.Client.Id, out var connection))
+            {
+                OnClientDisconnected(connection);
+            }
+        }
+
+        public void Send(Message message, RiptideConnection connection)
+        {
+            _server.Send(message, connection.Connection);
         }
         
         public override void SendToAll(Message message)
@@ -51,7 +65,10 @@ namespace Rip2p.Servers
 
         private void OnMessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            OnMessageReceived(e.FromConnection.Id, e.Message);
+            if (_connections.TryGetValue(e.FromConnection.Id, out var connection))
+            {
+                OnMessageReceived(connection, e.MessageId, e.Message);
+            }
         }
         
         public void FixedUpdate()

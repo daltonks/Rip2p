@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rip2p.Clients;
+using Rip2p.Peers;
 using Rip2p.Servers;
+using Rip2p.Servers.Connections;
 using Riptide;
 using UnityEngine;
 
@@ -16,12 +18,19 @@ namespace Rip2p
 
         public bool IsHost => _isHost;
         
+        public BaseServer Server { get; private set; }
         public BaseClient HostClient { get; private set; }
-        
-        private BaseServer _server;
+        public IEnumerable<BaseClient> ClientsExceptHostLoopback => _clientsExceptHostLoopback;
+        public IEnumerable<BaseClient> AllClients => _allClients;
+
         private readonly List<BaseClient> _clientsExceptHostLoopback = new();
         private readonly List<BaseClient> _allClients = new();
 
+        // TODO: Something like this?
+        // private readonly Dictionary<ushort, IPeer> _peerIdsToPeer = new();
+        // private readonly Dictionary<ushort, ushort> _serverConnectionsToPeerIds = new();
+        // private readonly Dictionary<ushort, ushort> _clientIdsToPeerIds = new();
+        
         private Type _clientImplementationType;
         
         private bool _started;
@@ -42,11 +51,11 @@ namespace Rip2p
             
             _clientImplementationType = typeof(TClient);
             
-            _server = (BaseServer) gameObject.AddComponent(typeof(TServer));
+            Server = (BaseServer) gameObject.AddComponent(typeof(TServer));
             
-            _server.ClientConnected += OnServerClientConnected;
-            _server.ClientDisconnected += OnServerClientDisconnected;
-            _server.MessageReceived += OnServerMessageReceived;
+            Server.ClientConnected += OnServerClientConnected;
+            Server.ClientDisconnected += OnServerClientDisconnected;
+            Server.MessageReceived += OnServerMessageReceived;
             
             if (!TryStartServer(suggestedPort, maxClientCount))
             {
@@ -57,7 +66,7 @@ namespace Rip2p
             {
                 _isHost = true;
                 hostAddress = LoopbackAddress;
-                hostPort = _server.Port;
+                hostPort = Server.Port;
             }
             
             var (connectSuccess, client) = await TryConnectAsync(hostAddress, hostPort);
@@ -74,7 +83,7 @@ namespace Rip2p
             {
                 try
                 {
-                    _server.StartServer(port, maxClientCount);
+                    Server.StartServer(port, maxClientCount);
                     return true;
                 }
                 catch (Exception ex)
@@ -95,7 +104,7 @@ namespace Rip2p
             var client = (BaseClient)gameObject.AddComponent(_clientImplementationType);
             
             client.Disconnected += OnClientDisconnected;
-            client.MessageReceived += OnMessageReceived;
+            client.MessageReceived += OnClientMessageReceived;
 
             if (hostAddress == LoopbackAddress)
             {
@@ -107,42 +116,38 @@ namespace Rip2p
             }
 
             _allClients.Add(client);
-            
-            if(!await client.ConnectAsync(hostAddress, hostPort))
+
+            if (await client.ConnectAsync(hostAddress, hostPort))
             {
-                RemoveClient(client);
-                return (false, null);
+                return (true, client);
             }
 
-            return (true, client);
+            RemoveClient(client);
+            return (false, null);
         }
 
         private void RemoveClient(BaseClient client)
         {
+            client.Disconnect();
             client.Disconnected -= OnClientDisconnected;
-            client.MessageReceived -= OnMessageReceived;
+            client.MessageReceived -= OnClientMessageReceived;
 
             _clientsExceptHostLoopback.Remove(client);
             _allClients.Remove(client);
             Destroy(client);
         }
 
-        private void OnServerMessageReceived(ushort client, Message message)
+        private void OnServerClientConnected(BaseConnection connection)
         {
             
         }
         
-        private void OnServerClientConnected(ushort client)
+        private void OnServerClientDisconnected(BaseConnection connection)
         {
             
         }
         
-        private void OnServerClientDisconnected(ushort client)
-        {
-            
-        }
-        
-        private void OnMessageReceived(BaseClient client, Message message)
+        private void OnServerMessageReceived(BaseConnection connection, ushort messageId, Message message)
         {
             
         }
@@ -151,16 +156,26 @@ namespace Rip2p
         {
             
         }
+        
+        private void OnClientMessageReceived(BaseClient client, ushort messageId, Message message)
+        {
+            
+        }
 
-        public void SendToOthers(Message message, bool returnToPool = true)
+        public void Send(Message message, IPeer peer)
+        {
+            peer.Send(message);
+        }
+
+        public void SendToOthers(Message message, bool returnMessageToPool = true)
         {
             if (IsHost)
             {
-                _server.SendToAllExcept(message, HostClient.Id);
+                Server.SendToAllExcept(message, HostClient.Id);
             }
             else
             {
-                _server.SendToAll(message);
+                Server.SendToAll(message);
             }
             
             foreach (var client in _clientsExceptHostLoopback)
@@ -168,17 +183,17 @@ namespace Rip2p
                 client.Send(message);
             }
 
-            if (returnToPool)
+            if (returnMessageToPool)
             {
                 message.Release();
             }
         }
 
-        public void SendToHost(Message message, bool returnToPool = true)
+        public void SendToHost(Message message, bool returnMessageToPool = true)
         {
             HostClient.Send(message);
             
-            if (returnToPool)
+            if (returnMessageToPool)
             {
                 message.Release();
             }
@@ -186,16 +201,16 @@ namespace Rip2p
 
         public void Stop()
         {
-            if (_server == null)
+            if (Server == null)
             {
                 return;
             }
 
-            _server.StopServer();
-            _server.ClientConnected -= OnServerClientConnected;
-            _server.ClientDisconnected -= OnServerClientDisconnected;
-            _server.MessageReceived -= OnServerMessageReceived;
-            Destroy(_server);
+            Server.StopServer();
+            Server.ClientConnected -= OnServerClientConnected;
+            Server.ClientDisconnected -= OnServerClientDisconnected;
+            Server.MessageReceived -= OnServerMessageReceived;
+            Destroy(Server);
 
             foreach (var client in _allClients.ToArray())
             {
