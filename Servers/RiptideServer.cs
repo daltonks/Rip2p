@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using Rip2p.Peers;
 using Rip2p.Servers.Connections;
 using Riptide;
 
@@ -14,7 +13,6 @@ namespace Rip2p.Servers
         private void Awake()
         {
             _server = new Server();
-            
             _server.ClientConnected += OnClientConnected;
             _server.ClientDisconnected += OnClientDisconnected;
             _server.MessageReceived += OnMessageReceived;
@@ -36,7 +34,7 @@ namespace Rip2p.Servers
 
         private void OnClientConnected(object sender, ServerConnectedEventArgs e)
         {
-            var connection = _connections[e.Client.Id] = new RiptideConnection(e.Client, this);
+            var connection = _connections[e.Client.Id] = new RiptideConnection(e.Client);
             OnClientConnected(connection);
         }
         
@@ -52,7 +50,12 @@ namespace Rip2p.Servers
         {
             _server.Send(message, connection.Connection);
         }
-        
+
+        public override void Send(Message message, ushort clientId)
+        {
+            _server.Send(message, clientId, shouldRelease: false);
+        }
+
         public override void SendToAll(Message message)
         {
             _server.SendToAll(message, shouldRelease: false);

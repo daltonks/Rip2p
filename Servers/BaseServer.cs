@@ -21,8 +21,8 @@ namespace Rip2p.Servers
         public ushort Port => _port;
         public ushort MaxClientCount => _maxClientCount;
 
-        private readonly HashSet<BaseConnection> _clients = new();
-        public IEnumerable<BaseConnection> Clients => _clients;
+        private readonly Dictionary<ushort, BaseConnection> _clients = new();
+        public IReadOnlyDictionary<ushort, BaseConnection> Clients => _clients;
 
         public void StartServer(ushort port, ushort maxClientCount)
         {
@@ -37,13 +37,13 @@ namespace Rip2p.Servers
 
         protected void OnClientConnected(BaseConnection connection)
         {
-            _clients.Add(connection);
+            _clients[connection.Id] = connection;
             ClientConnected?.Invoke(connection);
         }
 
         protected void OnClientDisconnected(BaseConnection connection)
         {
-            _clients.Remove(connection);
+            _clients.Remove(connection.Id);
             ClientDisconnected?.Invoke(connection);
         }
 
@@ -52,6 +52,7 @@ namespace Rip2p.Servers
             MessageReceived?.Invoke(connection, messageId, message);
         }
 
+        public abstract void Send(Message message, ushort clientId);
         public abstract void SendToAll(Message message);
         public abstract void SendToAllExcept(Message message, ushort client);
     }

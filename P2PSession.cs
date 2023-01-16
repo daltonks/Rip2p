@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rip2p.Clients;
-using Rip2p.Peers;
 using Rip2p.Servers;
 using Rip2p.Servers.Connections;
 using Riptide;
@@ -12,68 +10,57 @@ namespace Rip2p
 {
     public class P2PSession : MonoBehaviour
     {
-        private const string LoopbackAddress = "127.0.0.1";
-        
         [SerializeField] private bool _isHost;
 
         public bool IsHost => _isHost;
         
-        public BaseServer Server { get; private set; }
-        public BaseClient HostClient { get; private set; }
-        public IEnumerable<BaseClient> ClientsExceptHostLoopback => _clientsExceptHostLoopback;
-        public IEnumerable<BaseClient> AllClients => _allClients;
+        private BaseServer _server;
+        private BaseClient _client;
 
-        private readonly List<BaseClient> _clientsExceptHostLoopback = new();
-        private readonly List<BaseClient> _allClients = new();
-
-        // TODO: Something like this?
-        // private readonly Dictionary<ushort, IPeer> _peerIdsToPeer = new();
-        // private readonly Dictionary<ushort, ushort> _serverConnectionsToPeerIds = new();
-        // private readonly Dictionary<ushort, ushort> _clientIdsToPeerIds = new();
+        private bool _hasStarted;
         
-        private Type _clientImplementationType;
-        
-        private bool _started;
         public async Task<bool> TryStartAsync<TServer, TClient>(
             ushort suggestedPort, 
-            ushort maxClientCount,
-            string hostAddress = null,
-            ushort hostPort = 0)
+            ushort maxClientCount)
             where TServer : BaseServer 
             where TClient : BaseClient
         {
-            if (_started)
+            if (_hasStarted)
             {
                 return false;
             }
-
-            _started = true;
+            _hasStarted = true;
             
-            _clientImplementationType = typeof(TClient);
+            _isHost = true;
             
-            Server = (BaseServer) gameObject.AddComponent(typeof(TServer));
+            _server = (BaseServer) gameObject.AddComponent(typeof(TServer));
             
-            Server.ClientConnected += OnServerClientConnected;
-            Server.ClientDisconnected += OnServerClientDisconnected;
-            Server.MessageReceived += OnServerMessageReceived;
+            _server.ClientConnected += OnServerClientConnected;
+            _server.ClientDisconnected += OnServerClientDisconnected;
+            _server.MessageReceived += OnServerMessageReceived;
             
             if (!TryStartServer(suggestedPort, maxClientCount))
             {
                 return false;
             }
-
-            if (hostAddress == null)
-            {
-                _isHost = true;
-                hostAddress = LoopbackAddress;
-                hostPort = Server.Port;
-            }
             
-            var (connectSuccess, client) = await TryConnectAsync(hostAddress, hostPort);
-            HostClient = client;
-            return connectSuccess;
+            return await TryConnectAsync<TClient>("127.0.0.1", _server.Port);
         }
-
+        
+        public async Task<bool> TryStartAsync<TClient>(
+            string hostAddress,
+            ushort hostPort) 
+            where TClient : BaseClient
+        {
+            if (_hasStarted)
+            {
+                return false;
+            }
+            _hasStarted = true;
+            
+            return await TryConnectAsync<TClient>(hostAddress, hostPort);
+        }
+        
         private bool TryStartServer(ushort suggestedPort, ushort maxClientCount)
         {
             var port = suggestedPort;
@@ -83,7 +70,7 @@ namespace Rip2p
             {
                 try
                 {
-                    Server.StartServer(port, maxClientCount);
+                    _server.StartServer(port, maxClientCount);
                     return true;
                 }
                 catch (Exception ex)
@@ -97,44 +84,16 @@ namespace Rip2p
             return false;
         }
         
-        public async Task<(bool success, BaseClient client)> TryConnectAsync(
-            string hostAddress, 
-            ushort hostPort)
+        private async Task<bool> TryConnectAsync<TClient>(
+            string hostAddress,
+            ushort hostPort) where TClient : BaseClient
         {
-            var client = (BaseClient)gameObject.AddComponent(_clientImplementationType);
+            _client = gameObject.AddComponent<TClient>();
             
-            client.Disconnected += OnClientDisconnected;
-            client.MessageReceived += OnClientMessageReceived;
+            _client.Disconnected += OnClientDisconnected;
+            _client.MessageReceived += OnClientMessageReceived;
 
-            if (hostAddress == LoopbackAddress)
-            {
-                client.IsHostLoopbackClient = true;
-            }
-            else
-            {
-                _clientsExceptHostLoopback.Add(client);
-            }
-
-            _allClients.Add(client);
-
-            if (await client.ConnectAsync(hostAddress, hostPort))
-            {
-                return (true, client);
-            }
-
-            RemoveClient(client);
-            return (false, null);
-        }
-
-        private void RemoveClient(BaseClient client)
-        {
-            client.Disconnect();
-            client.Disconnected -= OnClientDisconnected;
-            client.MessageReceived -= OnClientMessageReceived;
-
-            _clientsExceptHostLoopback.Remove(client);
-            _allClients.Remove(client);
-            Destroy(client);
+            return await _client.ConnectAsync(hostAddress, hostPort);
         }
 
         private void OnServerClientConnected(BaseConnection connection)
@@ -162,60 +121,150 @@ namespace Rip2p
             
         }
 
-        public void Send(Message message, IPeer peer)
+        public void SendToServer(
+            MessageSendMode sendMode, 
+            Enum messageId, 
+            Action<Message> addToMessage)
         {
-            peer.Send(message);
-        }
+            var message = CreateMessage(
+                sendMode,
+                MessageRecipient.Server,
+                messageId,
+                addToMessage);
 
-        public void SendToOthers(Message message, bool returnMessageToPool = true)
-        {
             if (IsHost)
             {
-                Server.SendToAllExcept(message, HostClient.Id);
+                OnServerMessageReceived(
+                    _server.Clients[_client.Id], 
+                    Convert.ToUInt16(messageId), 
+                    message);
             }
             else
             {
-                Server.SendToAll(message);
-            }
-            
-            foreach (var client in _clientsExceptHostLoopback)
-            {
-                client.Send(message);
+                _client.Send(message);
             }
 
-            if (returnMessageToPool)
+            message.Release();
+        }
+        
+        public void SendToClient(
+            MessageSendMode sendMode, 
+            Enum messageId, 
+            Action<Message> addToMessage, 
+            ushort clientId)
+        {
+            var message = CreateMessage(
+                sendMode,
+                MessageRecipient.SpecificClient,
+                messageId,
+                addToMessage,
+                clientId);
+
+            if (IsHost)
             {
-                message.Release();
+                _server.Send(message, clientId);
             }
+            else
+            {
+                _client.Send(message);
+            }
+            
+            message.Release();
+        }
+        
+        public void SendToOthers(
+            MessageSendMode sendMode, 
+            Enum messageId, 
+            Action<Message> addToMessage)
+        {
+            var message = CreateMessage(
+                sendMode,
+                MessageRecipient.OtherClients,
+                messageId,
+                addToMessage);
+            
+            if (IsHost)
+            {
+                _server.SendToAllExcept(message, _client.Id);
+            }
+            else
+            {
+                _client.Send(message);
+            }
+            
+            message.Release();
         }
 
-        public void SendToHost(Message message, bool returnMessageToPool = true)
+        public void SendToAllClientsIncludingMyself(
+            MessageSendMode sendMode, 
+            Enum messageId, 
+            Action<Message> addToMessage)
         {
-            HostClient.Send(message);
-            
-            if (returnMessageToPool)
+            var message = CreateMessage(
+                sendMode,
+                MessageRecipient.AllClientsIncludingMyself,
+                messageId,
+                addToMessage);
+
+            if (IsHost)
             {
-                message.Release();
+                _server.SendToAll(message);
             }
+            else
+            {
+                _client.Send(message);
+            }
+            
+            message.Release();
+        }
+
+        private Message CreateMessage(
+            MessageSendMode sendMode, 
+            MessageRecipient recipient,
+            Enum messageId, 
+            Action<Message> addToMessage,
+            ushort specificClientId = 0)
+        {
+            var message = Message.Create(sendMode, messageId);
+            
+            var recipientWord = (ushort)recipient;
+            if (recipient == MessageRecipient.SpecificClient)
+            {
+                recipientWord |= (ushort)(specificClientId << 2);
+            }
+            message.AddUShort(recipientWord);
+            
+            addToMessage(message);
+
+            return message;
         }
 
         public void Stop()
         {
-            if (Server == null)
+            if (_server != null)
             {
-                return;
+                _server.StopServer();
+                _server.ClientConnected -= OnServerClientConnected;
+                _server.ClientDisconnected -= OnServerClientDisconnected;
+                _server.MessageReceived -= OnServerMessageReceived;
+                Destroy(_server);
             }
 
-            Server.StopServer();
-            Server.ClientConnected -= OnServerClientConnected;
-            Server.ClientDisconnected -= OnServerClientDisconnected;
-            Server.MessageReceived -= OnServerMessageReceived;
-            Destroy(Server);
-
-            foreach (var client in _allClients.ToArray())
+            if (_client != null)
             {
-                RemoveClient(client);
+                _client.Disconnect();
+                _client.Disconnected -= OnClientDisconnected;
+                _client.MessageReceived -= OnClientMessageReceived;
+                Destroy(_client);
             }
+        }
+
+        enum MessageRecipient
+        {
+            Server,
+            SpecificClient,
+            OtherClients,
+            AllClientsIncludingMyself
         }
     }
 }

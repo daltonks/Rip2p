@@ -1,5 +1,4 @@
 ﻿using System.Threading.Tasks;
-using Rip2p.Peers;
 using Riptide;
 using UnityEngine;
 
@@ -8,20 +7,14 @@ namespace Rip2p.Clients
     public delegate void DisconnectedDelegate(BaseClient client);
     public delegate void MessageReceivedDelegate(BaseClient client, ushort messageId, Message message);
 
-    public abstract class BaseClient : MonoBehaviour, IPeer
+    public abstract class BaseClient : MonoBehaviour
     {
-        [SerializeField] private bool _isHostLoopbackClient;
         [SerializeField] private string _serverAddress;
         [SerializeField] private ushort _serverPort;
 
         public event DisconnectedDelegate Disconnected;
         public event MessageReceivedDelegate MessageReceived;
 
-        public bool IsHostLoopbackClient
-        {
-            get => _isHostLoopbackClient;
-            internal set => _isHostLoopbackClient = value;
-        }
         public string ServerAddress => _serverAddress;
         public ushort ServerPort => _serverPort;
         public abstract ushort Id { get; }
