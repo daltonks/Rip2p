@@ -53,7 +53,6 @@ namespace Rip2p.Servers
         }
 
         public abstract void Send(Message message, ushort clientId);
-        public abstract void SendToAll(Message message);
         public abstract void SendToAllExcept(Message message, ushort client);
     }
 }

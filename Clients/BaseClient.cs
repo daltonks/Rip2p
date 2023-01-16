@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace Rip2p.Clients
 {
-    public delegate void DisconnectedDelegate(BaseClient client);
-    public delegate void MessageReceivedDelegate(BaseClient client, ushort messageId, Message message);
+    public delegate void DisconnectedDelegate();
+    public delegate void MessageReceivedDelegate(ushort messageId, Message message);
 
     public abstract class BaseClient : MonoBehaviour
     {
@@ -30,14 +30,14 @@ namespace Rip2p.Clients
 
         protected void OnDisconnected()
         {
-            Disconnected?.Invoke(this);
+            Disconnected?.Invoke();
         }
         
         public abstract void Disconnect();
 
         protected void OnMessageReceived(ushort messageId, Message message)
         {
-            MessageReceived?.Invoke(this, messageId, message);
+            MessageReceived?.Invoke(messageId, message);
         }
         
         public abstract void Send(Message message);

@@ -56,11 +56,6 @@ namespace Rip2p.Servers
             _server.Send(message, clientId, shouldRelease: false);
         }
 
-        public override void SendToAll(Message message)
-        {
-            _server.SendToAll(message, shouldRelease: false);
-        }
-
         public override void SendToAllExcept(Message message, ushort client)
         {
             _server.SendToAll(message, exceptToClientId: client, shouldRelease: false);
