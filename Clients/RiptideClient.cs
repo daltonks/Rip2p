@@ -21,7 +21,10 @@ namespace Rip2p.Clients
             
             _client.Connected += OnConnected;
             _client.Disconnected += OnDisconnected;
+            _client.MessageReceived += OnMessageReceived;
         }
+
+        public override ushort Id => _client.Id;
 
         protected override Task<bool> ConnectInternalAsync(string address, ushort port)
         {
@@ -53,7 +56,17 @@ namespace Rip2p.Clients
             _client.Connected -= OnConnected;
             _client.Disconnected -= OnDisconnected;
         }
+
+        public override void Send(Message message)
+        {
+            _client.Send(message, shouldRelease: false);
+        }
         
+        private void OnMessageReceived(object sender, MessageReceivedEventArgs e)
+        {
+            OnMessageReceived(e.Message);
+        }
+
         private void FixedUpdate()
         {
             _client.Update();

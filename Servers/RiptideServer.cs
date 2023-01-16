@@ -28,25 +28,35 @@ namespace Rip2p.Servers
             _server.ClientDisconnected -= OnClientDisconnected;
             _server.MessageReceived -= OnMessageReceived;
         }
-        
-        public void FixedUpdate()
-        {
-            _server.Update();
-        }
-        
+
         private void OnClientConnected(object sender, ServerConnectedEventArgs e)
         {
-            
+            OnClientConnected(e.Client.Id);
         }
         
         private void OnClientDisconnected(object sender, ServerDisconnectedEventArgs e)
         {
-            
+            OnClientDisconnected(e.Client.Id);
         }
         
+        public override void SendToAll(Message message)
+        {
+            _server.SendToAll(message, shouldRelease: false);
+        }
+
+        public override void SendToAllExcept(Message message, ushort client)
+        {
+            _server.SendToAll(message, exceptToClientId: client, shouldRelease: false);
+        }
+
         private void OnMessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            
+            OnMessageReceived(e.FromConnection.Id, e.Message);
+        }
+        
+        public void FixedUpdate()
+        {
+            _server.Update();
         }
     }
 }
