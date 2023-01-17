@@ -5,33 +5,35 @@ using Rip2p.Servers;
 using Rip2p.Servers.Connections;
 using Riptide;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Rip2p
 {
-    public delegate void ServerClientConnectedDelegate(BaseConnection connection);
-    public delegate void ServerClientDisconnectedDelegate(BaseConnection connection);
-    public delegate void ServerReceivedMessageDelegate(BaseConnection connection, ushort messageId, Message message);
-    public delegate void ClientDisconnectedDelegate();
-    public delegate void ClientReceivedMessageDelegate(ushort messageId, Message message);
-    
-    public class P2PSession : MonoBehaviour
+    public class P2PSession<TMessageType> where TMessageType : Enum
     {
-        [SerializeField] private bool _isHost;
-
+        public delegate void ServerClientConnectedDelegate(BaseConnection connection);
+        public delegate void ServerClientDisconnectedDelegate(BaseConnection connection);
+        public delegate void ServerReceivedMessageDelegate(BaseConnection connection, TMessageType messageType, Message message);
+        public delegate void ClientDisconnectedDelegate();
+        public delegate void ClientReceivedMessageDelegate(TMessageType messageType, Message message);
+        
         public event ServerClientConnectedDelegate ServerClientConnected;
         public event ServerClientDisconnectedDelegate ServerClientDisconnected;
         public event ServerReceivedMessageDelegate ServerMessageReceived;
         public event ClientDisconnectedDelegate ClientDisconnected;
         public event ClientReceivedMessageDelegate ClientMessageReceived;
         
-        public bool IsHost => _isHost;
+        public bool IsHost { get; private set; }
         
         private BaseServer _server;
         private BaseClient _client;
 
         private bool _hasStarted;
+
+        private GameObject _gameObject;
         
         public async Task<bool> TryStartAsync<TServer, TClient>(
+            GameObject gameObject,
             ushort suggestedPort, 
             ushort maxClientCount)
             where TServer : BaseServer 
@@ -43,7 +45,9 @@ namespace Rip2p
             }
             _hasStarted = true;
             
-            _isHost = true;
+            IsHost = true;
+
+            _gameObject = gameObject;
             
             _server = (BaseServer) gameObject.AddComponent(typeof(TServer));
             
@@ -60,6 +64,7 @@ namespace Rip2p
         }
         
         public async Task<bool> TryStartAsync<TClient>(
+            GameObject gameObject,
             string hostAddress,
             ushort hostPort) 
             where TClient : BaseClient
@@ -69,6 +74,8 @@ namespace Rip2p
                 return false;
             }
             _hasStarted = true;
+
+            _gameObject = gameObject;
             
             return await TryConnectAsync<TClient>(hostAddress, hostPort);
         }
@@ -100,7 +107,7 @@ namespace Rip2p
             string hostAddress,
             ushort hostPort) where TClient : BaseClient
         {
-            _client = gameObject.AddComponent<TClient>();
+            _client = _gameObject.AddComponent<TClient>();
             
             _client.Disconnected += OnClientDisconnected;
             _client.MessageReceived += OnClientMessageReceived;
@@ -118,13 +125,16 @@ namespace Rip2p
             ServerClientDisconnected?.Invoke(connection);
         }
         
-        private void OnServerMessageReceived(BaseConnection connection, ushort messageId, Message message)
+        private void OnServerMessageReceived(BaseConnection connection, ushort messageType, Message message)
         {
             var (recipient, specificClientId) = ReadMessageRecipient(message);
             switch (recipient)
             {
                 case MessageRecipient.Server:
-                    ServerMessageReceived?.Invoke(connection, messageId, message);
+                    ServerMessageReceived?.Invoke(
+                        connection, 
+                        (TMessageType) Enum.ToObject(typeof(TMessageType), messageType), 
+                        message);
                     break;
                 case MessageRecipient.SpecificClient:
                     _server.Send(message, specificClientId);
@@ -142,21 +152,23 @@ namespace Rip2p
             ClientDisconnected?.Invoke();
         }
         
-        private void OnClientMessageReceived(ushort messageId, Message message)
+        private void OnClientMessageReceived(ushort messageType, Message message)
         {
             _ = ReadMessageRecipient(message);
-            ClientMessageReceived?.Invoke(messageId, message);
+            ClientMessageReceived?.Invoke(
+                (TMessageType) Enum.ToObject(typeof(TMessageType), messageType), 
+                message);
         }
 
         public void SendToServer(
             MessageSendMode sendMode, 
-            ushort messageId, 
+            TMessageType messageType, 
             Action<Message> addToMessage)
         {
             var message = CreateMessage(
                 sendMode,
                 MessageRecipient.Server,
-                messageId,
+                messageType,
                 addToMessage);
 
             if (IsHost)
@@ -165,7 +177,7 @@ namespace Rip2p
                 _ = message.GetUShort();
                 OnServerMessageReceived(
                     _server.Clients[_client.Id], 
-                    messageId, 
+                    (ushort) (object) (messageType), 
                     message);
             }
             else
@@ -178,14 +190,14 @@ namespace Rip2p
         
         public void SendToClient(
             MessageSendMode sendMode, 
-            ushort messageId, 
+            TMessageType messageType, 
             Action<Message> addToMessage, 
             ushort clientId)
         {
             var message = CreateMessage(
                 sendMode,
                 MessageRecipient.SpecificClient,
-                messageId,
+                messageType,
                 addToMessage,
                 clientId);
 
@@ -203,13 +215,13 @@ namespace Rip2p
         
         public void SendToOtherClients(
             MessageSendMode sendMode, 
-            ushort messageId, 
+            TMessageType messageType, 
             Action<Message> addToMessage)
         {
             var message = CreateMessage(
                 sendMode,
                 MessageRecipient.OtherClients,
-                messageId,
+                messageType,
                 addToMessage);
             
             if (IsHost)
@@ -226,18 +238,18 @@ namespace Rip2p
 
         public void SendToAllClientsIncludingMyself(
             MessageSendMode sendMode, 
-            ushort messageId, 
+            TMessageType messageType, 
             Action<Message> addToMessage)
         {
             var message = CreateMessage(
                 sendMode,
                 MessageRecipient.OtherClients,
-                messageId,
+                messageType,
                 addToMessage);
 
             // Read past messageId
             _ = message.GetUShort();
-            OnClientMessageReceived(messageId, message);
+            OnClientMessageReceived((ushort) (object) messageType, message);
             
             if (IsHost)
             {
@@ -254,11 +266,11 @@ namespace Rip2p
         private Message CreateMessage(
             MessageSendMode sendMode, 
             MessageRecipient recipient,
-            ushort messageId, 
+            TMessageType messageType, 
             Action<Message> addToMessage,
             ushort specificClientId = 0)
         {
-            var message = Message.Create(sendMode, messageId);
+            var message = Message.Create(sendMode, messageType);
             
             var recipientWord = (ushort)recipient;
             if (recipient == MessageRecipient.SpecificClient)
@@ -288,7 +300,7 @@ namespace Rip2p
                 _server.ClientConnected -= OnServerClientConnected;
                 _server.ClientDisconnected -= OnServerClientDisconnected;
                 _server.MessageReceived -= OnServerMessageReceived;
-                Destroy(_server);
+                Object.Destroy(_server);
             }
 
             if (_client != null)
@@ -296,7 +308,7 @@ namespace Rip2p
                 _client.Disconnect();
                 _client.Disconnected -= OnClientDisconnected;
                 _client.MessageReceived -= OnClientMessageReceived;
-                Destroy(_client);
+                Object.Destroy(_client);
             }
         }
 
