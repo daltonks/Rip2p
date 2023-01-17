@@ -9,31 +9,30 @@ using Object = UnityEngine.Object;
 
 namespace Rip2p
 {
-    public class P2PSession<TMessageType> where TMessageType : Enum
+    public abstract class P2PSession<TMessageType> : MonoBehaviour where TMessageType : Enum
     {
         public delegate void ServerClientConnectedDelegate(BaseConnection connection);
         public delegate void ServerClientDisconnectedDelegate(BaseConnection connection);
         public delegate void ServerReceivedMessageDelegate(BaseConnection connection, TMessageType messageType, Message message);
         public delegate void ClientDisconnectedDelegate();
         public delegate void ClientReceivedMessageDelegate(TMessageType messageType, Message message);
+
+        [SerializeField] private bool _isHost;
         
         public event ServerClientConnectedDelegate ServerClientConnected;
         public event ServerClientDisconnectedDelegate ServerClientDisconnected;
         public event ServerReceivedMessageDelegate ServerMessageReceived;
         public event ClientDisconnectedDelegate ClientDisconnected;
         public event ClientReceivedMessageDelegate ClientMessageReceived;
-        
-        public bool IsHost { get; private set; }
+
+        public bool IsHost => _isHost;
         
         private BaseServer _server;
         private BaseClient _client;
 
         private bool _hasStarted;
 
-        private GameObject _gameObject;
-        
         public async Task<bool> TryStartAsync<TServer, TClient>(
-            GameObject gameObject,
             ushort suggestedPort, 
             ushort maxClientCount)
             where TServer : BaseServer 
@@ -45,10 +44,8 @@ namespace Rip2p
             }
             _hasStarted = true;
             
-            IsHost = true;
+            _isHost = true;
 
-            _gameObject = gameObject;
-            
             _server = (BaseServer) gameObject.AddComponent(typeof(TServer));
             
             _server.ClientConnected += OnServerClientConnected;
@@ -64,7 +61,6 @@ namespace Rip2p
         }
         
         public async Task<bool> TryStartAsync<TClient>(
-            GameObject gameObject,
             string hostAddress,
             ushort hostPort) 
             where TClient : BaseClient
@@ -75,8 +71,6 @@ namespace Rip2p
             }
             _hasStarted = true;
 
-            _gameObject = gameObject;
-            
             return await TryConnectAsync<TClient>(hostAddress, hostPort);
         }
         
@@ -107,7 +101,7 @@ namespace Rip2p
             string hostAddress,
             ushort hostPort) where TClient : BaseClient
         {
-            _client = _gameObject.AddComponent<TClient>();
+            _client = gameObject.AddComponent<TClient>();
             
             _client.Disconnected += OnClientDisconnected;
             _client.MessageReceived += OnClientMessageReceived;
@@ -300,7 +294,7 @@ namespace Rip2p
                 _server.ClientConnected -= OnServerClientConnected;
                 _server.ClientDisconnected -= OnServerClientDisconnected;
                 _server.MessageReceived -= OnServerMessageReceived;
-                Object.Destroy(_server);
+                Destroy(_server);
             }
 
             if (_client != null)
@@ -308,7 +302,7 @@ namespace Rip2p
                 _client.Disconnect();
                 _client.Disconnected -= OnClientDisconnected;
                 _client.MessageReceived -= OnClientMessageReceived;
-                Object.Destroy(_client);
+                Destroy(_client);
             }
         }
 
