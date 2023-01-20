@@ -20,6 +20,7 @@ namespace Rip2p.Clients
             _client = new Client(transport);
             
             _client.Connected += OnConnected;
+            _client.ConnectionFailed += OnConnectionFailed;
             _client.Disconnected += OnDisconnected;
             _client.MessageReceived += OnMessageReceived;
         }
@@ -35,6 +36,11 @@ namespace Rip2p.Clients
             
             _connectCompletionSource = new TaskCompletionSource<bool>();
             return _connectCompletionSource.Task;
+        }
+        
+        private void OnConnectionFailed(object sender, ConnectionFailedEventArgs e)
+        {
+            _connectCompletionSource.TrySetResult(false);
         }
         
         private void OnConnected(object sender, EventArgs e)
@@ -54,7 +60,9 @@ namespace Rip2p.Clients
             _client.Disconnect();
             
             _client.Connected -= OnConnected;
+            _client.ConnectionFailed -= OnConnectionFailed;
             _client.Disconnected -= OnDisconnected;
+            _client.MessageReceived -= OnMessageReceived;
         }
 
         public override void Send(Message message)
