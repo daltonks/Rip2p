@@ -28,7 +28,7 @@ namespace Rip2p.Clients
         }
 
         public override ushort Id => _client.Id;
-
+        
         protected override Task<(bool success, string message)> ConnectInternalAsync(
             string address, 
             ushort port)
@@ -40,6 +40,11 @@ namespace Rip2p.Clients
             
             _connectCompletionSource = new TaskCompletionSource<(bool success, string message)>();
             return _connectCompletionSource.Task;
+        }
+        
+        public override void Tick()
+        {
+            _client.Update();
         }
         
         private void OnConnected(object sender, EventArgs e)
@@ -90,11 +95,6 @@ namespace Rip2p.Clients
         private void OnMessageReceived(object sender, MessageReceivedEventArgs e)
         {
             OnMessageReceived(e.MessageId, e.Message);
-        }
-
-        private void FixedUpdate()
-        {
-            _client.Update();
         }
     }
 }

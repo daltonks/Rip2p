@@ -30,11 +30,13 @@ namespace Rip2p.Servers
             _maxClientCount = maxClientCount;
             StartServerInternal(port, maxClientCount);
         }
-
+        
         protected abstract void StartServerInternal(ushort port, ushort maxClientCount);
         
         public abstract void StopServer();
 
+        public abstract void Tick();
+        
         protected void OnClientConnected(BaseConnection connection)
         {
             _clients[connection.Id] = connection;

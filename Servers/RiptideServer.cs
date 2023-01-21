@@ -32,6 +32,11 @@ namespace Rip2p.Servers
             _server.MessageReceived -= OnMessageReceived;
         }
 
+        public override void Tick()
+        {
+            _server.Update();
+        }
+
         private void OnClientConnected(object sender, ServerConnectedEventArgs e)
         {
             var connection = _connections[e.Client.Id] = new RiptideConnection(e.Client);
@@ -62,11 +67,6 @@ namespace Rip2p.Servers
             {
                 OnMessageReceived(connection, e.MessageId, e.Message);
             }
-        }
-        
-        public void FixedUpdate()
-        {
-            _server.Update();
         }
     }
 }

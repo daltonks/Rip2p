@@ -118,7 +118,19 @@ namespace Rip2p
 
             return await _client.ConnectAsync(hostAddress, hostPort);
         }
-        
+
+        private void FixedUpdate()
+        {
+            Tick();
+            _client.Tick();
+            if (IsHost)
+            {
+                _server.Tick();
+            }
+        }
+
+        protected abstract void Tick();
+
         private void OnServerClientConnected(BaseConnection connection)
         {
             ServerClientConnected?.Invoke(connection);

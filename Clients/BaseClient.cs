@@ -32,6 +32,8 @@ namespace Rip2p.Clients
 
         public abstract void Disconnect();
         
+        public abstract void Tick();
+
         protected abstract Task<(bool success, string message)> ConnectInternalAsync(string address, ushort port);
 
         protected void OnOtherClientConnected(ushort clientId)
