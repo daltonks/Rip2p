@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace Rip2p.Clients
 {
+    public delegate void ClientConnectedDelegate(ushort clientId);
     public delegate void OtherClientConnectedDelegate(ushort clientId);
     public delegate void DisconnectedDelegate();
     public delegate void OtherClientDisconnectedDelegate(ushort clientId);
@@ -14,6 +15,7 @@ namespace Rip2p.Clients
         [SerializeField] protected string _serverAddress;
         [SerializeField] protected ushort _serverPort;
 
+        public event ClientConnectedDelegate ClientConnected;
         public event OtherClientConnectedDelegate OtherClientConnected;
         public event DisconnectedDelegate Disconnected;
         public event OtherClientDisconnectedDelegate OtherClientDisconnected;
@@ -36,6 +38,11 @@ namespace Rip2p.Clients
 
         protected abstract Task<(bool success, string message)> ConnectInternalAsync(string address, ushort port);
 
+        protected void OnClientConnected(ushort clientId)
+        {
+            ClientConnected?.Invoke(clientId);
+        }
+        
         protected void OnOtherClientConnected(ushort clientId)
         {
             OtherClientConnected?.Invoke(clientId);

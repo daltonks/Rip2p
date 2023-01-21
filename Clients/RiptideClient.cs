@@ -50,6 +50,7 @@ namespace Rip2p.Clients
         private void OnConnected(object sender, EventArgs e)
         {
             _connectCompletionSource.TrySetResult((true, ""));
+            OnClientConnected(_client.Id);
         }
         
         private void OnOtherClientConnected(object sender, ClientConnectedEventArgs e)

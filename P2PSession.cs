@@ -10,28 +10,8 @@ namespace Rip2p
 {
     public abstract class P2PSession<TMessageType> : MonoBehaviour where TMessageType : Enum
     {
-        public delegate void ServerClientConnectedDelegate(BaseConnection connection);
-        public delegate void OtherClientConnectedDelegate(ushort clientId);
-        
-        public delegate void ServerClientDisconnectedDelegate(BaseConnection connection);
-        public delegate void ClientDisconnectedDelegate();
-        public delegate void OtherClientDisconnectedDelegate(ushort clientId);
-        
-        public delegate void ServerReceivedMessageDelegate(BaseConnection connection, TMessageType messageType, Message message);
-        public delegate void ClientReceivedMessageDelegate(TMessageType messageType, Message message);
-        
         [SerializeField] private bool _isHost;
         
-        public event ServerClientConnectedDelegate ServerClientConnected;
-        public event OtherClientConnectedDelegate OtherClientConnected;
-        
-        public event ServerClientDisconnectedDelegate ServerClientDisconnected;
-        public event ClientDisconnectedDelegate ClientDisconnected;
-        public event OtherClientDisconnectedDelegate OtherClientDisconnected;
-        
-        public event ServerReceivedMessageDelegate ServerMessageReceived;
-        public event ClientReceivedMessageDelegate ClientMessageReceived;
-
         public bool IsHost => _isHost;
         public ushort ClientId => _client.Id;
         
@@ -110,7 +90,8 @@ namespace Rip2p
             ushort hostPort) where TClient : BaseClient
         {
             _client = gameObject.AddComponent<TClient>();
-            
+
+            _client.ClientConnected += OnClientConnected;
             _client.OtherClientConnected += OnOtherClientConnected;
             _client.Disconnected += OnClientDisconnected;
             _client.OtherClientDisconnected += OnOtherClientDisconnected;
@@ -131,30 +112,14 @@ namespace Rip2p
 
         protected abstract void Tick();
 
-        private void OnServerClientConnected(BaseConnection connection)
-        {
-            ServerClientConnected?.Invoke(connection);
-        }
-        
-        private void OnOtherClientConnected(ushort clientId)
-        {
-            OtherClientConnected?.Invoke(clientId);
-        }
-        
-        private void OnServerClientDisconnected(BaseConnection connection)
-        {
-            ServerClientDisconnected?.Invoke(connection);
-        }
-        
-        private void OnClientDisconnected()
-        {
-            ClientDisconnected?.Invoke();
-        }
-        
-        private void OnOtherClientDisconnected(ushort clientId)
-        {
-            OtherClientDisconnected?.Invoke(clientId);
-        }
+        protected abstract void OnServerClientConnected(BaseConnection connection);
+        protected abstract void OnClientConnected(ushort clientId);
+        protected abstract void OnOtherClientConnected(ushort clientId);
+        protected abstract void OnServerClientDisconnected(BaseConnection connection);
+        protected abstract void OnClientDisconnected();
+        protected abstract void OnOtherClientDisconnected(ushort clientId);
+        protected abstract void OnServerMessageReceived(BaseConnection connection, TMessageType messageType, Message message);
+        protected abstract void OnClientMessageReceived(TMessageType messageType, Message message);
         
         private void OnServerMessageReceived(BaseConnection connection, ushort messageType, Message message)
         {
@@ -162,7 +127,7 @@ namespace Rip2p
             switch (recipient)
             {
                 case MessageRecipient.Server:
-                    ServerMessageReceived?.Invoke(
+                    OnServerMessageReceived(
                         connection, 
                         (TMessageType) Enum.ToObject(typeof(TMessageType), messageType), 
                         message);
@@ -181,7 +146,7 @@ namespace Rip2p
         private void OnClientMessageReceived(ushort messageType, Message message)
         {
             _ = ReadMessageRecipient(message);
-            ClientMessageReceived?.Invoke(
+            OnClientMessageReceived(
                 (TMessageType) Enum.ToObject(typeof(TMessageType), messageType), 
                 message);
         }
@@ -332,6 +297,7 @@ namespace Rip2p
             if (_client != null)
             {
                 _client.Disconnect();
+                _client.ClientConnected -= OnClientConnected;
                 _client.OtherClientConnected -= OnOtherClientConnected;
                 _client.Disconnected -= OnClientDisconnected;
                 _client.OtherClientDisconnected -= OnOtherClientDisconnected;
