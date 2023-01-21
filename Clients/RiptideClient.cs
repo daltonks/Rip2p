@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Riptide;
+using Riptide.Transports;
 using Riptide.Transports.Udp;
+using DisconnectedEventArgs = Riptide.DisconnectedEventArgs;
 
 namespace Rip2p.Clients
 {
@@ -9,15 +11,14 @@ namespace Rip2p.Clients
     {
         private TaskCompletionSource<(bool success, string message)> _connectCompletionSource;
 
-        private Client _client;
+        private RiptideClientImpl _client;
 
         private void Awake()
         {
             // TODO: Change UdpClient to steam client:
             // TODO: https://github.com/RiptideNetworking/SteamTransport
-            
             var transport = new UdpClient();
-            _client = new Client(transport);
+            _client = new RiptideClientImpl(transport);
             
             _client.Connected += OnConnected;
             _client.ClientConnected += OnOtherClientConnected;
@@ -96,6 +97,21 @@ namespace Rip2p.Clients
         private void OnMessageReceived(object sender, MessageReceivedEventArgs e)
         {
             OnMessageReceived(e.MessageId, e.Message);
+        }
+    }
+    
+    class RiptideClientImpl : Client
+    {
+        public delegate void MessageReceivedDelegate(ushort messageId, Message message);
+
+        public new event MessageReceivedDelegate MessageReceived;
+        
+        public RiptideClientImpl(IClient transport) : base(transport) { }
+        
+        protected override void OnMessageReceived(Message message)
+        {
+            var messageId = message.GetUShort();
+            MessageReceived?.Invoke(messageId, message);
         }
     }
 }
