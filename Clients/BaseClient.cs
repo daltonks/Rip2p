@@ -9,8 +9,8 @@ namespace Rip2p.Clients
 
     public abstract class BaseClient : MonoBehaviour
     {
-        [SerializeField] private string _serverAddress;
-        [SerializeField] private ushort _serverPort;
+        [SerializeField] protected string _serverAddress;
+        [SerializeField] protected ushort _serverPort;
 
         public event DisconnectedDelegate Disconnected;
         public event MessageReceivedDelegate MessageReceived;
@@ -19,14 +19,14 @@ namespace Rip2p.Clients
         public ushort ServerPort => _serverPort;
         public abstract ushort Id { get; }
         
-        public async Task<bool> ConnectAsync(string address, ushort port)
+        public async Task<(bool success, string message)> ConnectAsync(string address, ushort port)
         {
             _serverAddress = address;
             _serverPort = port;
             return await ConnectInternalAsync(address, port);
         }
 
-        protected abstract Task<bool> ConnectInternalAsync(string address, ushort port);
+        protected abstract Task<(bool success, string message)> ConnectInternalAsync(string address, ushort port);
 
         protected void OnDisconnected()
         {

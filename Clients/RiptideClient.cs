@@ -7,7 +7,7 @@ namespace Rip2p.Clients
 {
     public class RiptideClient : BaseClient
     {
-        private TaskCompletionSource<bool> _connectCompletionSource;
+        private TaskCompletionSource<(bool success, string message)> _connectCompletionSource;
 
         private Client _client;
 
@@ -27,32 +27,35 @@ namespace Rip2p.Clients
 
         public override ushort Id => _client.Id;
 
-        protected override Task<bool> ConnectInternalAsync(string address, ushort port)
+        protected override Task<(bool success, string message)> ConnectInternalAsync(
+            string address, 
+            ushort port)
         {
             if (!_client.Connect($"{address}:{port}"))
             {
-                return Task.FromResult(false);
+                return Task.FromResult((false, $"Can't connect to {address}:{port}"));
             }
             
-            _connectCompletionSource = new TaskCompletionSource<bool>();
+            _connectCompletionSource = new TaskCompletionSource<(bool success, string message)>();
             return _connectCompletionSource.Task;
         }
         
         private void OnConnectionFailed(object sender, ConnectionFailedEventArgs e)
         {
-            _connectCompletionSource.TrySetResult(false);
+            _connectCompletionSource.TrySetResult(
+                (false, $"Connection failed to {_serverAddress}:{_serverPort}"));
         }
         
         private void OnConnected(object sender, EventArgs e)
         {
-            _connectCompletionSource.TrySetResult(true);
+            _connectCompletionSource.TrySetResult((true, ""));
         }
         
         private void OnDisconnected(object sender, DisconnectedEventArgs e)
         {
             OnDisconnected();
             
-            _connectCompletionSource.TrySetResult(false);
+            _connectCompletionSource.TrySetResult((false, $"Disconnected from {_serverAddress}: {_serverPort}"));
         }
         
         public override void Disconnect()

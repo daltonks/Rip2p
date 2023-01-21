@@ -32,7 +32,7 @@ namespace Rip2p
 
         private bool _hasStarted;
 
-        public async Task<bool> TryStartAsync<TServer, TClient>(
+        public async Task<(bool success, string message)> TryStartAsync<TServer, TClient>(
             ushort suggestedPort, 
             ushort maxClientCount)
             where TServer : BaseServer 
@@ -40,7 +40,7 @@ namespace Rip2p
         {
             if (_hasStarted)
             {
-                return false;
+                return (false, "Session has already started");
             }
             _hasStarted = true;
             
@@ -54,20 +54,20 @@ namespace Rip2p
             
             if (!TryStartServer(suggestedPort, maxClientCount))
             {
-                return false;
+                return (false, "Unable to start server");
             }
             
             return await TryConnectAsync<TClient>("127.0.0.1", _server.Port);
         }
         
-        public async Task<bool> TryStartAsync<TClient>(
+        public async Task<(bool success, string message)> TryStartAsync<TClient>(
             string hostAddress,
             ushort hostPort) 
             where TClient : BaseClient
         {
             if (_hasStarted)
             {
-                return false;
+                return (false, "Session has already started");
             }
             _hasStarted = true;
 
@@ -97,7 +97,7 @@ namespace Rip2p
             return false;
         }
         
-        private async Task<bool> TryConnectAsync<TClient>(
+        private async Task<(bool success, string message)> TryConnectAsync<TClient>(
             string hostAddress,
             ushort hostPort) where TClient : BaseClient
         {
@@ -167,7 +167,7 @@ namespace Rip2p
 
             if (IsHost)
             {
-                // Read past messageId
+                // Read past the messageId
                 _ = message.GetUShort();
                 OnServerMessageReceived(
                     _server.Clients[_client.Id], 
@@ -241,7 +241,7 @@ namespace Rip2p
                 messageType,
                 addToMessage);
 
-            // Read past messageId
+            // Read past the messageId
             _ = message.GetUShort();
             OnClientMessageReceived((ushort) (object) messageType, message);
             
