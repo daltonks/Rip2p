@@ -8,11 +8,11 @@ namespace Rip2p.Servers
     {
         private readonly Dictionary<ushort, RiptideConnection> _connections = new();
         
-        private Server _server;
+        private RiptideServerImpl _server;
 
         private void Awake()
         {
-            _server = new Server();
+            _server = new RiptideServerImpl();
             _server.ClientConnected += OnClientConnected;
             _server.ClientDisconnected += OnClientDisconnected;
             _server.MessageReceived += OnMessageReceived;
@@ -61,12 +61,25 @@ namespace Rip2p.Servers
             _server.SendToAll(message, exceptToClientId: client, shouldRelease: false);
         }
 
-        private void OnMessageReceived(object sender, MessageReceivedEventArgs e)
+        private void OnMessageReceived(Connection fromConnection, ushort messageId, Message message)
         {
-            if (_connections.TryGetValue(e.FromConnection.Id, out var connection))
+            if (_connections.TryGetValue(fromConnection.Id, out var connection))
             {
-                OnMessageReceived(connection, e.MessageId, e.Message);
+                OnMessageReceived(connection, messageId, message);
             }
+        }
+    }
+
+    class RiptideServerImpl : Server
+    {
+        public delegate void MessageReceivedDelegate(Connection fromConnection, ushort messageId, Message message);
+
+        public new event MessageReceivedDelegate MessageReceived;
+        
+        protected override void OnMessageReceived(Message message, Connection fromConnection)
+        {
+            var messageId = message.GetUShort();
+            MessageReceived?.Invoke(fromConnection, messageId, message);
         }
     }
 }
