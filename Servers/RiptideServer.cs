@@ -46,11 +46,6 @@ namespace Rip2p.Servers
             }
         }
 
-        public void Send(Message message, RiptideConnection connection)
-        {
-            _server.Send(message, connection.Connection);
-        }
-
         public override void Send(Message message, ushort clientId)
         {
             _server.Send(message, clientId, shouldRelease: false);

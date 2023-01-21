@@ -20,8 +20,10 @@ namespace Rip2p.Clients
             _client = new Client(transport);
             
             _client.Connected += OnConnected;
+            _client.ClientConnected += OnOtherClientConnected;
             _client.ConnectionFailed += OnConnectionFailed;
             _client.Disconnected += OnDisconnected;
+            _client.ClientDisconnected += OnOtherClientDisconnected;
             _client.MessageReceived += OnMessageReceived;
         }
 
@@ -40,15 +42,20 @@ namespace Rip2p.Clients
             return _connectCompletionSource.Task;
         }
         
+        private void OnConnected(object sender, EventArgs e)
+        {
+            _connectCompletionSource.TrySetResult((true, ""));
+        }
+        
+        private void OnOtherClientConnected(object sender, ClientConnectedEventArgs e)
+        {
+            OnOtherClientConnected(e.Id);
+        }
+        
         private void OnConnectionFailed(object sender, ConnectionFailedEventArgs e)
         {
             _connectCompletionSource.TrySetResult(
                 (false, $"Connection failed to {_serverAddress}:{_serverPort}"));
-        }
-        
-        private void OnConnected(object sender, EventArgs e)
-        {
-            _connectCompletionSource.TrySetResult((true, ""));
         }
         
         private void OnDisconnected(object sender, DisconnectedEventArgs e)
@@ -58,13 +65,20 @@ namespace Rip2p.Clients
             _connectCompletionSource.TrySetResult((false, $"Disconnected from {_serverAddress}: {_serverPort}"));
         }
         
+        private void OnOtherClientDisconnected(object sender, ClientDisconnectedEventArgs e)
+        {
+            OnOtherClientDisconnected(e.Id);
+        }
+        
         public override void Disconnect()
         {
             _client.Disconnect();
             
             _client.Connected -= OnConnected;
+            _client.ClientConnected -= OnOtherClientConnected;
             _client.ConnectionFailed -= OnConnectionFailed;
             _client.Disconnected -= OnDisconnected;
+            _client.ClientDisconnected -= OnOtherClientDisconnected;
             _client.MessageReceived -= OnMessageReceived;
         }
 

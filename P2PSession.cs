@@ -5,27 +5,35 @@ using Rip2p.Servers;
 using Rip2p.Servers.Connections;
 using Riptide;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace Rip2p
 {
     public abstract class P2PSession<TMessageType> : MonoBehaviour where TMessageType : Enum
     {
         public delegate void ServerClientConnectedDelegate(BaseConnection connection);
+        public delegate void OtherClientConnectedDelegate(ushort clientId);
+        
         public delegate void ServerClientDisconnectedDelegate(BaseConnection connection);
-        public delegate void ServerReceivedMessageDelegate(BaseConnection connection, TMessageType messageType, Message message);
         public delegate void ClientDisconnectedDelegate();
+        public delegate void OtherClientDisconnectedDelegate(ushort clientId);
+        
+        public delegate void ServerReceivedMessageDelegate(BaseConnection connection, TMessageType messageType, Message message);
         public delegate void ClientReceivedMessageDelegate(TMessageType messageType, Message message);
-
+        
         [SerializeField] private bool _isHost;
         
         public event ServerClientConnectedDelegate ServerClientConnected;
+        public event OtherClientConnectedDelegate OtherClientConnected;
+        
         public event ServerClientDisconnectedDelegate ServerClientDisconnected;
-        public event ServerReceivedMessageDelegate ServerMessageReceived;
         public event ClientDisconnectedDelegate ClientDisconnected;
+        public event OtherClientDisconnectedDelegate OtherClientDisconnected;
+        
+        public event ServerReceivedMessageDelegate ServerMessageReceived;
         public event ClientReceivedMessageDelegate ClientMessageReceived;
 
         public bool IsHost => _isHost;
+        public ushort ClientId => _client.Id;
         
         private BaseServer _server;
         private BaseClient _client;
@@ -103,20 +111,37 @@ namespace Rip2p
         {
             _client = gameObject.AddComponent<TClient>();
             
+            _client.OtherClientConnected += OnOtherClientConnected;
             _client.Disconnected += OnClientDisconnected;
+            _client.OtherClientDisconnected += OnOtherClientDisconnected;
             _client.MessageReceived += OnClientMessageReceived;
 
             return await _client.ConnectAsync(hostAddress, hostPort);
         }
-
+        
         private void OnServerClientConnected(BaseConnection connection)
         {
             ServerClientConnected?.Invoke(connection);
         }
         
+        private void OnOtherClientConnected(ushort clientId)
+        {
+            OtherClientConnected?.Invoke(clientId);
+        }
+        
         private void OnServerClientDisconnected(BaseConnection connection)
         {
             ServerClientDisconnected?.Invoke(connection);
+        }
+        
+        private void OnClientDisconnected()
+        {
+            ClientDisconnected?.Invoke();
+        }
+        
+        private void OnOtherClientDisconnected(ushort clientId)
+        {
+            OtherClientDisconnected?.Invoke(clientId);
         }
         
         private void OnServerMessageReceived(BaseConnection connection, ushort messageType, Message message)
@@ -141,11 +166,6 @@ namespace Rip2p
             }
         }
         
-        private void OnClientDisconnected()
-        {
-            ClientDisconnected?.Invoke();
-        }
-        
         private void OnClientMessageReceived(ushort messageType, Message message)
         {
             _ = ReadMessageRecipient(message);
@@ -153,7 +173,7 @@ namespace Rip2p
                 (TMessageType) Enum.ToObject(typeof(TMessageType), messageType), 
                 message);
         }
-
+        
         public void SendToServer(
             MessageSendMode sendMode, 
             TMessageType messageType, 
@@ -300,7 +320,9 @@ namespace Rip2p
             if (_client != null)
             {
                 _client.Disconnect();
+                _client.OtherClientConnected -= OnOtherClientConnected;
                 _client.Disconnected -= OnClientDisconnected;
+                _client.OtherClientDisconnected -= OnOtherClientDisconnected;
                 _client.MessageReceived -= OnClientMessageReceived;
                 Destroy(_client);
             }
