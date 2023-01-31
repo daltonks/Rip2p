@@ -123,7 +123,7 @@ namespace Rip2p
         
         private void OnServerMessageReceived(BaseConnection connection, ushort messageType, Message message)
         {
-            var (recipient, specificClientId) = ReadMessageRecipient(message);
+            var (recipient, clientId) = ReadMessageRecipient(message);
             switch (recipient)
             {
                 case MessageRecipient.Server:
@@ -133,7 +133,10 @@ namespace Rip2p
                         message);
                     break;
                 case MessageRecipient.SpecificClient:
-                    _server.Send(message, specificClientId);
+                    _server.Send(message, clientId);
+                    break;
+                case MessageRecipient.ExceptClient:
+                    _server.SendToAllExcept(message, clientId);
                     break;
                 case MessageRecipient.OtherClients:
                     _server.SendToAllExcept(message, connection.Id);
@@ -203,7 +206,7 @@ namespace Rip2p
             
             message.Release();
         }
-        
+
         public void SendToOtherClients(
             MessageSendMode sendMode, 
             TMessageType messageType, 
@@ -227,6 +230,31 @@ namespace Rip2p
             message.Release();
         }
 
+        public void SendToAllClientsExcept(
+            MessageSendMode sendMode, 
+            TMessageType messageType, 
+            Action<Message> addToMessage, 
+            ushort clientId)
+        {
+            var message = CreateMessage(
+                sendMode,
+                MessageRecipient.ExceptClient,
+                messageType,
+                addToMessage,
+                clientId);
+
+            if (IsHost)
+            {
+                _server.SendToAllExcept(message, clientId);
+            }
+            else
+            {
+                _client.Send(message);
+            }
+            
+            message.Release();
+        }
+        
         public void SendToAllClientsIncludingMyself(
             MessageSendMode sendMode, 
             TMessageType messageType, 
@@ -259,15 +287,11 @@ namespace Rip2p
             MessageRecipient recipient,
             TMessageType messageType, 
             Action<Message> addToMessage,
-            ushort specificClientId = 0)
+            ushort clientId = 0)
         {
             var message = Message.Create(sendMode, messageType);
             
-            var recipientWord = (ushort)recipient;
-            if (recipient == MessageRecipient.SpecificClient)
-            {
-                recipientWord |= (ushort)(specificClientId << 2);
-            }
+            var recipientWord = (ushort)((ushort)recipient | (ushort)(clientId << 2));
             message.AddUShort(recipientWord);
             
             addToMessage(message);
@@ -275,12 +299,12 @@ namespace Rip2p
             return message;
         }
 
-        private (MessageRecipient recipient, ushort specificClientId) ReadMessageRecipient(Message message)
+        private (MessageRecipient recipient, ushort clientId) ReadMessageRecipient(Message message)
         {
             var recipientWord = message.GetUShort();
             var recipient = (MessageRecipient) (recipientWord & 0b11);
-            var specificClientId = (ushort)(recipientWord >> 2);
-            return (recipient, specificClientId);
+            var clientId = (ushort)(recipientWord >> 2);
+            return (recipient, clientId);
         }
 
         public void Stop()
@@ -310,6 +334,7 @@ namespace Rip2p
         {
             Server,
             SpecificClient,
+            ExceptClient,
             OtherClients
         }
     }
