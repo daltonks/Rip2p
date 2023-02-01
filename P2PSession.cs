@@ -165,19 +165,7 @@ namespace Rip2p
                 messageType,
                 addToMessage);
 
-            if (IsHost)
-            {
-                // Read past the messageId
-                _ = message.GetUShort();
-                OnServerMessageReceived(
-                    _server.Clients[_client.Id], 
-                    (ushort) (object) (messageType), 
-                    message);
-            }
-            else
-            {
-                _client.Send(message);
-            }
+            _client.Send(message);
 
             message.Release();
         }
