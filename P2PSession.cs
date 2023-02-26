@@ -100,7 +100,7 @@ namespace Rip2p
             return await _client.ConnectAsync(hostAddress, hostPort);
         }
 
-        private void FixedUpdate()
+        protected virtual void FixedUpdate()
         {
             Tick();
             _client.Tick();
