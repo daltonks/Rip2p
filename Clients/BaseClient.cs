@@ -6,7 +6,7 @@ namespace Rip2p.Clients
 {
     public delegate void ClientConnectedDelegate(ushort clientId);
     public delegate void OtherClientConnectedDelegate(ushort clientId);
-    public delegate void DisconnectedDelegate();
+    public delegate void DisconnectedDelegate(ushort clientId);
     public delegate void OtherClientDisconnectedDelegate(ushort clientId);
     public delegate void MessageReceivedDelegate(ushort messageId, Message message);
 
@@ -48,9 +48,9 @@ namespace Rip2p.Clients
             OtherClientConnected?.Invoke(clientId);
         }
         
-        protected void OnDisconnected()
+        protected void OnDisconnected(ushort clientId)
         {
-            Disconnected?.Invoke();
+            Disconnected?.Invoke(clientId);
         }
         
         protected void OnOtherClientDisconnected(ushort clientId)

@@ -116,7 +116,7 @@ namespace Rip2p
         protected abstract void OnClientConnected(ushort clientId);
         protected abstract void OnOtherClientConnected(ushort clientId);
         protected abstract void OnServerClientDisconnected(BaseConnection connection);
-        protected abstract void OnClientDisconnected();
+        protected abstract void OnClientDisconnected(ushort clientId);
         protected abstract void OnOtherClientDisconnected(ushort clientId);
         protected abstract void OnServerMessageReceived(BaseConnection connection, TMessageType messageType, Message message);
         protected abstract void OnClientMessageReceived(TMessageType messageType, Message message);

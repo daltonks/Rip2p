@@ -67,7 +67,7 @@ namespace Rip2p.Clients
         
         private void OnDisconnected(object sender, DisconnectedEventArgs e)
         {
-            OnDisconnected();
+            OnDisconnected(_client.Id);
             
             _connectCompletionSource.TrySetResult((false, $"Disconnected from {_serverAddress}: {_serverPort}"));
         }
