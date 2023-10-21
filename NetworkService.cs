@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using Rip2p.Session;
@@ -55,16 +56,17 @@ namespace Rip2p
         {
             Instance = this;
         }
-        
-        private void Awake()
+
+        public void Init(params Assembly[] networkDataAssemblies)
         {
-            _dataTypes = typeof(NetworkService).Assembly.DefinedTypes
+            _dataTypes = networkDataAssemblies
+                .SelectMany(x => x.DefinedTypes)
                 .Where(t => typeof(INetworkData).IsAssignableFrom(t))
                 .Where(t => !t.IsAbstract)
-                .OrderBy(t => t.Name)
+                .OrderBy(t => t.AssemblyQualifiedName)
                 .Select((t, i) => new { Id = (ushort) i, Type = t.AsType() })
                 .ToDictionary(x => x.Id, x => x.Type);
-
+            
             _dataTypeIds = _dataTypes.ToDictionary(x => x.Value, x => x.Key);
         }
         
