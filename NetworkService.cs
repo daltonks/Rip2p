@@ -20,14 +20,8 @@ namespace Rip2p
         public static NetworkService Instance { get; private set; }
         
         public event Action<NetworkSession> SessionChanged;
-        
-        // TODO: await SceneService.Instance.LoadClientScenesAsync();
         public event Func<Task> ClientSessionStarting;
-        
-        // TODO: await SceneService.Instance.LoadClientToHostConversionScenesAsync();
         public event Func<Task> ClientSessionStartingFailed;
-        
-        // TODO: await SceneService.Instance.LoadHostScenesAsync();
         public event Func<Task> ClientSessionStopped;
         
         private NetworkSession _session;
