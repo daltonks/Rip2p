@@ -1,10 +1,10 @@
 ﻿using System;
-using Rip2p.Syncing;
+using Rip2p.Session.Data;
 using Riptide;
 using UnityEngine;
 using Util;
 
-namespace Rip2p
+namespace Rip2p.Session.Syncs
 {
     public class NetworkSyncSession : IDisposable
     {

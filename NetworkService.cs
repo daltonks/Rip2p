@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
-using Rip2p.Clients;
-using Rip2p.Servers;
+using Rip2p.Session;
+using Rip2p.Session.Clients;
+using Rip2p.Session.Data;
+using Rip2p.Session.Servers;
 using UnityEngine;
 
 namespace Rip2p
@@ -57,7 +59,7 @@ namespace Rip2p
         private void Awake()
         {
             _dataTypes = typeof(NetworkService).Assembly.DefinedTypes
-                .Where(t => typeof(IData).IsAssignableFrom(t))
+                .Where(t => typeof(INetworkData).IsAssignableFrom(t))
                 .Where(t => !t.IsAbstract)
                 .OrderBy(t => t.Name)
                 .Select((t, i) => new { Id = (ushort) i, Type = t.AsType() })

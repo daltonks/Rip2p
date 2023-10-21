@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace Rip2p
+namespace Rip2p.Session.Syncs
 {
     public class NetworkSyncIdRangeService
     {

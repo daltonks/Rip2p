@@ -1,9 +1,9 @@
 ﻿using Riptide;
 using UnityEngine;
 
-namespace Rip2p
+namespace Rip2p.Session.Data
 {
-    public interface IData
+    public interface INetworkData
     {
         GameObject GetPrefab();
         void WriteTo(Message message);

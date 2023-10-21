@@ -2,13 +2,15 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using Rip2p.Servers.Connections;
+using Rip2p.Session.Data;
+using Rip2p.Session.Servers.Connections;
+using Rip2p.Session.Syncs;
 using Riptide;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Util;
 
-namespace Rip2p
+namespace Rip2p.Session
 {
     public class NetworkSession : P2PSession<NetworkMessageType>
     {

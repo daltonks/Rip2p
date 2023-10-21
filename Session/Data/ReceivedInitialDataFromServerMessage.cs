@@ -1,4 +1,4 @@
-﻿namespace Rip2p
+﻿namespace Rip2p.Session.Data
 {
     public class ReceivedInitialDataFromServerMessage
     {

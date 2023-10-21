@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rip2p.Session.Data;
 using Riptide;
 using UnityEngine;
 using Util;
 
-namespace Rip2p.Syncing
+namespace Rip2p.Session.Syncs
 {
     public abstract class NetworkSync<TData> : NetworkSync
-        where TData : class, IData, new()
+        where TData : class, INetworkData, new()
     {
         private ushort _dataTypeId;
         public override ushort DataTypeId => _dataTypeId;
@@ -63,6 +64,7 @@ namespace Rip2p.Syncing
         {
             // Useful because Unity keeps static members alive in the editor
             AllSyncs.Clear();
+            ByTypeSyncs.Clear();
         }
         
         public static IEnumerable<T> GetByType<T>() where T : NetworkSync

@@ -1,10 +1,12 @@
-﻿using UnityEngine;
+﻿using Rip2p.Session.Data;
+using UnityEngine;
 using Util;
+using INetworkData = Rip2p.Session.Data.INetworkData;
 
-namespace Rip2p.Syncing
+namespace Rip2p.Session.Syncs
 {
     public abstract class InterpolatedNetworkSync<TData> : NetworkSync<TData> 
-        where TData : class, IData, new()
+        where TData : class, INetworkData, new()
     {
         public override bool SendDataOnTick => true;
         
@@ -18,7 +20,7 @@ namespace Rip2p.Syncing
         private TData _interpolationStartData;
 
         private bool _receivedInitialData;
-        private readonly CircularBuffer<(NetworkData NetworkData, TData Data)> _buffer = new(capacity: 2);
+        private readonly CircularBuffer<(Data.NetworkData NetworkData, TData Data)> _buffer = new(capacity: 2);
 
         protected override void OnReceivedData(NetworkData networkData, TData data)
         {

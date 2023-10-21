@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
-using Rip2p.Syncing;
+using Rip2p.Session.Data;
 using UnityEngine;
 using Util;
 using Object = UnityEngine.Object;
 
-namespace Rip2p
+namespace Rip2p.Session.Syncs
 {
     public class NetworkSyncService : IDisposable
     {

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Rip2p
+namespace Rip2p.Session.Data
 {
     public class NetworkData
     {
         public static NetworkData<TData> GetFromCache<TData>() 
-            where TData : class, IData, new()
+            where TData : class, INetworkData, new()
         {
             var data = GetCachedObject<TData>();
             var networkData = GetCachedObject<NetworkData<TData>>();
@@ -19,7 +19,7 @@ namespace Rip2p
         {
             var data = GetCachedObject(type);
             var networkData = GetCachedObject<NetworkData>();
-            networkData.Value = (IData)data;
+            networkData.Value = (INetworkData)data;
             networkData._usages = 1;
             return networkData;
         }
@@ -54,7 +54,7 @@ namespace Rip2p
             list.Add(obj);
         }
 
-        public IData Value { get; private set; }
+        public INetworkData Value { get; private set; }
 
         private int _usages;
 
