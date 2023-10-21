@@ -91,9 +91,9 @@ namespace Rip2p
         {
             _client = gameObject.AddComponent<TClient>();
 
-            _client.ClientConnected += OnClientConnected;
+            _client.ClientConnected += OnMyClientConnected;
             _client.OtherClientConnected += OnOtherClientConnected;
-            _client.Disconnected += OnClientDisconnected;
+            _client.Disconnected += OnMyClientDisconnected;
             _client.OtherClientDisconnected += OnOtherClientDisconnected;
             _client.MessageReceived += OnClientMessageReceived;
 
@@ -113,10 +113,10 @@ namespace Rip2p
         protected abstract void Tick();
 
         protected abstract void OnServerClientConnected(BaseConnection connection);
-        protected abstract void OnClientConnected(ushort clientId);
+        protected abstract void OnMyClientConnected(ushort clientId);
         protected abstract void OnOtherClientConnected(ushort clientId);
         protected abstract void OnServerClientDisconnected(BaseConnection connection);
-        protected abstract void OnClientDisconnected(ushort clientId);
+        protected abstract void OnMyClientDisconnected(ushort clientId);
         protected abstract void OnOtherClientDisconnected(ushort clientId);
         protected abstract void OnServerMessageReceived(BaseConnection connection, TMessageType messageType, Message message);
         protected abstract void OnClientMessageReceived(TMessageType messageType, Message message);
@@ -309,9 +309,9 @@ namespace Rip2p
             if (_client != null)
             {
                 _client.Disconnect();
-                _client.ClientConnected -= OnClientConnected;
+                _client.ClientConnected -= OnMyClientConnected;
                 _client.OtherClientConnected -= OnOtherClientConnected;
-                _client.Disconnected -= OnClientDisconnected;
+                _client.Disconnected -= OnMyClientDisconnected;
                 _client.OtherClientDisconnected -= OnOtherClientDisconnected;
                 _client.MessageReceived -= OnClientMessageReceived;
                 Destroy(_client);

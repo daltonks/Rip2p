@@ -17,7 +17,16 @@ namespace Rip2p
         public static NetworkService Instance { get; private set; }
         
         public event Action<NetworkSession> SessionChanged;
-
+        
+        // TODO: await SceneService.Instance.LoadClientScenesAsync();
+        public event Func<Task> ClientSessionStarting;
+        
+        // TODO: await SceneService.Instance.LoadClientToHostConversionScenesAsync();
+        public event Func<Task> ClientSessionStartingFailed;
+        
+        // TODO: await SceneService.Instance.LoadHostScenesAsync();
+        public event Func<Task> ClientSessionStopped;
+        
         private NetworkSession _session;
         public NetworkSession Session
         {
@@ -61,11 +70,11 @@ namespace Rip2p
             string hostAddress = null, 
             ushort hostPort = 0)
         {
-            await StopSessionAsync(allowSceneChange: false);
+            await StopSessionAsync(invokeEvents: false);
             
-            if (hostAddress != null)
+            if (hostAddress != null && ClientSessionStarting != null)
             {
-                await SceneService.Instance.LoadClientScenesAsync();
+                await ClientSessionStarting.Invoke();
             }
             
             Session = gameObject.AddComponent<NetworkSession>();
@@ -76,18 +85,23 @@ namespace Rip2p
 
             if (!result.success)
             {
-                await StopSessionAsync(allowSceneChange: false);
+                await StopSessionAsync(invokeEvents: false);
 
-                if (hostAddress != null)
+                if (hostAddress != null && ClientSessionStartingFailed != null)
                 {
-                    await SceneService.Instance.LoadClientToHostConversionScenesAsync();
+                    await ClientSessionStartingFailed.Invoke();
                 }
             }
 
             return result;
         }
 
-        public async UniTask StopSessionAsync(bool allowSceneChange)
+        public UniTask StopSessionAsync()
+        {
+            return StopSessionAsync(invokeEvents: true);
+        }
+        
+        private async UniTask StopSessionAsync(bool invokeEvents)
         {
             if (Session == null)
             {
@@ -100,15 +114,15 @@ namespace Rip2p
             session.Stop();
             Destroy(session);
             
-            if (allowSceneChange && !session.IsHost)
+            if (invokeEvents && !session.IsHost && ClientSessionStopped != null)
             {
-                await SceneService.Instance.LoadHostScenesAsync();
+                await ClientSessionStopped.Invoke();
             }
         }
 
         private void OnApplicationQuit()
         {
-            _ = StopSessionAsync(allowSceneChange: false);
+            _ = StopSessionAsync(invokeEvents: false);
         }
     }
 }

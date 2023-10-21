@@ -137,7 +137,7 @@ namespace Rip2p
                 connection.Id);
         }
 
-        protected override void OnClientConnected(ushort clientId)
+        protected override void OnMyClientConnected(ushort clientId)
         {
             IsConnected = true;
         }
@@ -171,9 +171,9 @@ namespace Rip2p
                 message => WriteDeleteSyncObjects(message, syncSessions.Select(x => x.Id)));
         }
 
-        protected override void OnClientDisconnected(ushort clientId)
+        protected override void OnMyClientDisconnected(ushort clientId)
         {
-            _ = NetworkService.Instance.StopSessionAsync(allowSceneChange: true);
+            _ = NetworkService.Instance.StopSessionAsync();
         }
 
         protected override void OnOtherClientDisconnected(ushort clientId)
