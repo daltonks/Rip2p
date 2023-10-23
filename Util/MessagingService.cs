@@ -1,13 +1,20 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Rip2p.Util
 {
     public class MessagingService
     {
-        public static MessagingService Instance { get; } = new();
+        public static MessagingService Instance { get; private set; }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ClearStaticMembers()
+        {
+            Instance = new MessagingService();
+        }
+        
         public delegate void EventDelegate<in T>(T message);
         private delegate void EventDelegate(object message);
 	

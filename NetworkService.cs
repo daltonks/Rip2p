@@ -8,16 +8,15 @@ using Rip2p.Session;
 using Rip2p.Session.Clients;
 using Rip2p.Session.Data;
 using Rip2p.Session.Servers;
-using UnityEngine;
+using Rip2p.Util;
+using Util;
 
 namespace Rip2p
 {
-    public class NetworkService : MonoBehaviour
+    public class NetworkService : SingletonMonoBehaviour<NetworkService>
     {
         private const ushort SuggestedPort = 13337;
         private const ushort MaxClientCount = 8;
-        
-        public static NetworkService Instance { get; private set; }
         
         public event Action<NetworkSession> SessionChanged;
         public event Func<Task> ClientSessionStarting;
@@ -45,11 +44,6 @@ namespace Rip2p
 
         private Dictionary<Type, ushort> _dataTypeIds;
         public IReadOnlyDictionary<Type, ushort> DataTypeIds => _dataTypeIds;
-        
-        public NetworkService()
-        {
-            Instance = this;
-        }
 
         public void Init(params Assembly[] networkDataAssemblies)
         {

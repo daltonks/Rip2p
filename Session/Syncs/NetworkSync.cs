@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rip2p.Session.Data;
+using Rip2p.Util;
 using Riptide;
 using UnityEngine;
 using Util;
@@ -53,16 +54,14 @@ namespace Rip2p.Session.Syncs
     
     public abstract class NetworkSync : MonoBehaviour
     {
-        public static event Action<NetworkSync> SyncIsNowOwned;
-        
         public static IReadOnlyCollection<NetworkSync> All => AllSyncs;
 
         private static readonly HashSet<NetworkSync> AllSyncs = new();
         private static readonly Dictionary<Type, List<NetworkSync>> ByTypeSyncs = new();
         
-        public static void ClearAll()
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ClearStaticMembers()
         {
-            // Useful because Unity keeps static members alive in the editor
             AllSyncs.Clear();
             ByTypeSyncs.Clear();
         }
@@ -102,7 +101,7 @@ namespace Rip2p.Session.Syncs
                 {
                     name = $"{name} {SmallStringGuid.NewGuid()}";
                     NetworkSyncDirtied?.Invoke(this);
-                    SyncIsNowOwned?.Invoke(this);
+                    MessagingService.Instance.Raise(new NetworkSyncIsNowOwnedMessage(this));
                 }
             }
         }

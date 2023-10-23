@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Rip2p.Session.Data;
+using Rip2p.Util;
 using UnityEngine;
 using Util;
 using Object = UnityEngine.Object;
@@ -33,6 +34,11 @@ namespace Rip2p.Session.Syncs
         private readonly List<ushort> _freedIds = new();
 
         private ushort _clientId;
+
+        public NetworkSyncService()
+        {
+            MessagingService.Instance.AddListener<NetworkSyncIsNowOwnedMessage>(OnSyncIsNowOwned);
+        }
         
         public void Init(ushort clientId, ushort minId, ushort maxId)
         {
@@ -45,12 +51,11 @@ namespace Rip2p.Session.Syncs
                 var syncSession = Add(GenerateId(), _clientId, networkSync);
                 syncSession.OnDirtied();
             }
-            NetworkSync.SyncIsNowOwned += OnSyncIsNowOwned;
         }
 
-        private void OnSyncIsNowOwned(NetworkSync networkSync)
+        private void OnSyncIsNowOwned(NetworkSyncIsNowOwnedMessage message)
         {
-            var syncSession = Add(GenerateId(), _clientId, networkSync);
+            var syncSession = Add(GenerateId(), _clientId, message.NetworkSync);
             syncSession.OnDirtied();
         }
 
@@ -298,7 +303,7 @@ namespace Rip2p.Session.Syncs
         
         public void Dispose()
         {
-            NetworkSync.SyncIsNowOwned -= OnSyncIsNowOwned;
+            MessagingService.Instance.RemoveListener<NetworkSyncIsNowOwnedMessage>(OnSyncIsNowOwned);
             
             // Destroy non-owned syncs
             var nonOwned = _syncToSessionMap
