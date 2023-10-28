@@ -156,7 +156,7 @@ namespace Rip2p.Session.Syncs
         public void Destroy()
         {
             DestroyInternal();
-            if (gameObject != null)
+            if (!IsDestroyed)
             {
                 Destroy(gameObject);
             }
@@ -167,15 +167,12 @@ namespace Rip2p.Session.Syncs
             DestroyInternal();
         }
 
-        private bool _destroyInternalCalled;
         private void DestroyInternal()
         {
-            if (_destroyInternalCalled)
+            if (IsDestroyed)
             {
                 return;
             }
-
-            _destroyInternalCalled = true;
 
             IsDestroyed = true;
             AllSyncs.Remove(this);
