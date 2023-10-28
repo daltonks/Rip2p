@@ -34,12 +34,13 @@ namespace Rip2p.Session.Clients
             string address, 
             ushort port)
         {
+            _connectCompletionSource = new TaskCompletionSource<(bool success, string message)>();
+            
             if (!_client.Connect($"{address}:{port}"))
             {
                 return Task.FromResult((false, $"Can't connect to {address}:{port}"));
             }
             
-            _connectCompletionSource = new TaskCompletionSource<(bool success, string message)>();
             return _connectCompletionSource.Task;
         }
         

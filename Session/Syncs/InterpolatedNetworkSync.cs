@@ -20,9 +20,9 @@ namespace Rip2p.Session.Syncs
         private TData _interpolationStartData;
 
         private bool _receivedInitialData;
-        private readonly CircularBuffer<(Data.NetworkData NetworkData, TData Data)> _buffer = new(capacity: 2);
+        private readonly CircularBuffer<(Data.NetworkDataWrapper NetworkData, TData Data)> _buffer = new(capacity: 2);
 
-        protected override void OnReceivedData(NetworkData networkData, TData data)
+        protected override void OnReceivedData(NetworkDataWrapper networkData, TData data)
         {
             if (IsOwned)
             {
@@ -40,7 +40,7 @@ namespace Rip2p.Session.Syncs
 
                 for (var i = 0; i < _buffer.Size; i++)
                 {
-                    var networkDataClone = NetworkData.GetFromCache(typeof(TData));
+                    var networkDataClone = NetworkDataWrapper.GetFromCache(typeof(TData));
                     var dataClone = (TData)networkDataClone.Value;
                     UpdateData(dataClone);
                     _buffer.PushBack((networkDataClone, dataClone));

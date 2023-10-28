@@ -55,6 +55,10 @@ namespace Rip2p.Session.Syncs
 
         private void OnSyncIsNowOwned(NetworkSyncIsNowOwnedMessage message)
         {
+            if (_maxId == 0)
+            {
+                return;
+            }
             var syncSession = Add(GenerateId(), _clientId, message.NetworkSync);
             syncSession.OnDirtied();
         }
@@ -223,7 +227,7 @@ namespace Rip2p.Session.Syncs
             ushort ownerClientId,
             string path,
             ushort dataTypeId,
-            NetworkData data,
+            NetworkDataWrapper data,
             Dictionary<string, GameObject> rootGameObjects)
         {
             GameObject networkGameObject;

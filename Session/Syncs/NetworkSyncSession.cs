@@ -35,7 +35,7 @@ namespace Rip2p.Session.Syncs
             _networkSync.WriteTo(message);
         }
 
-        public void OnReceivedData(NetworkData data)
+        public void OnReceivedData(NetworkDataWrapper data)
         {
             _networkSync.OnReceivedData(data);
         }

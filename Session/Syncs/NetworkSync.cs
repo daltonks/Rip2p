@@ -22,9 +22,9 @@ namespace Rip2p.Session.Syncs
             base.Awake();
         }
 
-        public override NetworkData CreateData()
+        public override NetworkDataWrapper CreateData()
         {
-            var networkData = NetworkData.GetFromCache<TData>();
+            var networkData = NetworkDataWrapper.GetFromCache<TData>();
             UpdateData(networkData.Value);
             return networkData;
         }
@@ -43,13 +43,20 @@ namespace Rip2p.Session.Syncs
             }
         }
 
-        public override void OnReceivedData(NetworkData networkData)
+        public override void OnReceivedData(NetworkDataWrapper networkData)
         {
-            OnReceivedData(networkData, (TData)networkData.Value);
+            try
+            {
+                OnReceivedData(networkData, (TData)networkData.Value);
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         protected abstract void UpdateData(TData data);
-        protected abstract void OnReceivedData(NetworkData networkData, TData data);
+        protected abstract void OnReceivedData(NetworkDataWrapper networkData, TData data);
     }
     
     public abstract class NetworkSync : MonoBehaviour
@@ -140,11 +147,11 @@ namespace Rip2p.Session.Syncs
         
         public abstract void WriteTo(Message message);
 
-        public abstract NetworkData CreateData();
+        public abstract NetworkDataWrapper CreateData();
 
         public abstract void OnOwnedDataSyncedToAll();
 
-        public abstract void OnReceivedData(NetworkData networkData);
+        public abstract void OnReceivedData(NetworkDataWrapper networkData);
         
         public void Destroy()
         {

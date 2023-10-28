@@ -258,7 +258,7 @@ namespace Rip2p.Session
                 var id = message.GetUShort();
                 var dataTypeId = message.GetUShort();
                 var dataType = NetworkService.Instance.DataTypes[dataTypeId];
-                var data = NetworkData.GetFromCache(dataType);
+                var data = NetworkDataWrapper.GetFromCache(dataType);
                 data.Value.ReadFrom(message);
                 
                 if(Syncs.ById.TryGetValue(id, out var syncSession))
@@ -301,7 +301,7 @@ namespace Rip2p.Session
                 var path = message.GetString();
                 var dataTypeId = message.GetUShort();
                 var dataType = NetworkService.Instance.DataTypes[dataTypeId];
-                var data = NetworkData.GetFromCache(dataType);
+                var data = NetworkDataWrapper.GetFromCache(dataType);
                 data.Value.ReadFrom(message);
 
                 var syncSession = Syncs.GetOrCreateSyncSession(

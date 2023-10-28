@@ -3,22 +3,22 @@ using System.Collections.Generic;
 
 namespace Rip2p.Session.Data
 {
-    public class NetworkData
+    public class NetworkDataWrapper
     {
         public static NetworkData<TData> GetFromCache<TData>() 
             where TData : class, INetworkData, new()
         {
             var data = GetCachedObject<TData>();
             var networkData = GetCachedObject<NetworkData<TData>>();
-            ((NetworkData)networkData).Value = data;
+            ((NetworkDataWrapper)networkData).Value = data;
             networkData._usages = 1;
             return networkData;
         }
         
-        public static NetworkData GetFromCache(Type type)
+        public static NetworkDataWrapper GetFromCache(Type type)
         {
             var data = GetCachedObject(type);
-            var networkData = GetCachedObject<NetworkData>();
+            var networkData = GetCachedObject<NetworkDataWrapper>();
             networkData.Value = (INetworkData)data;
             networkData._usages = 1;
             return networkData;
@@ -68,7 +68,7 @@ namespace Rip2p.Session.Data
             if (_usages == 0)
             {
                 throw new Exception(
-                    $"{nameof(NetworkData)}: 0 usages remaining when attempting to remove a usage.");
+                    $"{nameof(NetworkDataWrapper)}: 0 usages remaining when attempting to remove a usage.");
             }
             
             _usages--;
@@ -82,7 +82,7 @@ namespace Rip2p.Session.Data
         }
     }
 
-    public class NetworkData<TData> : NetworkData
+    public class NetworkData<TData> : NetworkDataWrapper
     {
         public new TData Value => (TData)base.Value;
     }
