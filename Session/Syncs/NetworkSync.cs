@@ -45,14 +45,7 @@ namespace Rip2p.Session.Syncs
 
         public override void OnReceivedData(NetworkDataWrapper networkData)
         {
-            try
-            {
-                OnReceivedData(networkData, (TData)networkData.Value);
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            OnReceivedData(networkData, (TData)networkData.Value);
         }
 
         protected abstract void UpdateData(TData data);
@@ -155,9 +148,9 @@ namespace Rip2p.Session.Syncs
         
         public void Destroy()
         {
-            DestroyInternal();
             if (!IsDestroyed)
             {
+                DestroyInternal();
                 Destroy(gameObject);
             }
         }
