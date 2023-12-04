@@ -5,6 +5,7 @@ using Rip2p.Session.Data;
 using Rip2p.Util;
 using Riptide;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Util;
 
 namespace Rip2p.Session.Syncs
@@ -73,10 +74,20 @@ namespace Rip2p.Session.Syncs
                 : Enumerable.Empty<T>();
         }
 
-        public event Action<NetworkSync> NetworkSyncDirtied;
-        
-        [SerializeField] private bool _isOwned;
+        public event Action<NetworkSync> Dirtied;
+        public event Action<NetworkSync> DestroyBegin;
 
+        [SerializeField] [DisableInInspector] private ushort _id;
+        [SerializeField] [DisableInInspector] private ushort _ownerClientId;
+        [SerializeField] [DisableInInspector] internal bool CreateMessageSent;
+        [SerializeField] [DisableInInspector] internal bool IsInSession;
+        
+        [SerializeField] [DisableInInspector] private bool _isOwned;
+
+        public Transform Transform { get; private set; }
+        public ushort Id => _id;
+        public ushort OwnerClientId => _ownerClientId;
+        
         private bool? _nonSerializedIsOwned;
         public bool IsOwned
         {
@@ -100,8 +111,8 @@ namespace Rip2p.Session.Syncs
                 if (value)
                 {
                     name = $"{name} {SmallStringGuid.NewGuid()}";
-                    NetworkSyncDirtied?.Invoke(this);
                     MessagingService.Instance.Raise(new NetworkSyncIsNowOwnedMessage(this));
+                    Dirtied?.Invoke(this);
                 }
             }
         }
@@ -114,6 +125,7 @@ namespace Rip2p.Session.Syncs
         
         protected virtual void Awake()
         {
+            Transform = transform;
             AllSyncs.Add(this);
 
             if (!ByTypeSyncs.TryGetValue(GetType(), out var byTypeList))
@@ -127,15 +139,28 @@ namespace Rip2p.Session.Syncs
         {
             IsOwned = _isOwned;
         }
+
+        public void OnSessionBegin(ushort id, ushort ownerClientId)
+        {
+            _id = id;
+            _ownerClientId = ownerClientId;
+            CreateMessageSent = false;
+            IsInSession = true;
+        }
         
-        public void OnNetworkSyncDirtied()
+        public void OnSessionEnd()
+        {
+            IsInSession = false;
+        }
+        
+        public void OnDirtied()
         {
             if (!IsOwned)
             {
                 return;
             }
             
-            NetworkSyncDirtied?.Invoke(this);
+            Dirtied?.Invoke(this);
         }
         
         public abstract void WriteTo(Message message);
@@ -145,7 +170,26 @@ namespace Rip2p.Session.Syncs
         public abstract void OnOwnedDataSyncedToAll();
 
         public abstract void OnReceivedData(NetworkDataWrapper networkData);
-        
+
+        public override string ToString()
+        {
+            if (IsDestroyed)
+            {
+                return $"ID: {Id}\n" +
+                       $"IsOwned: {IsOwned}\n";
+            }
+            
+            var networkData = CreateData();
+            var serializedData = DebugSerializer.Serialize(networkData.Value);
+            networkData.RemoveUsage();
+            
+            return $"ID: {_id}\n" +
+                   $"Type: {GetType().Name}\n" +
+                   $"IsOwned: {IsOwned}\n" +
+                   $"IsDestroyed: {IsDestroyed}\n" +
+                   $"Data:\n{serializedData}\n";
+        }
+
         public void Destroy()
         {
             if (!IsDestroyed)
@@ -167,17 +211,20 @@ namespace Rip2p.Session.Syncs
                 return;
             }
 
+            DestroyBegin?.Invoke(this);
+            
             IsDestroyed = true;
             AllSyncs.Remove(this);
-            
-            var byTypeList = ByTypeSyncs[GetType()];
+
+            var type = GetType();
+            var byTypeList = ByTypeSyncs[type];
             byTypeList.Remove(this);
             if (!byTypeList.Any())
             {
-                ByTypeSyncs.Remove(GetType());
+                ByTypeSyncs.Remove(type);
             }
 
-            NetworkSyncDirtied?.Invoke(this);
+            Dirtied?.Invoke(this);
         }
     }
 }

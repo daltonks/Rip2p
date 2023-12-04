@@ -98,17 +98,17 @@ namespace Rip2p.Session
                     message => WriteSyncData(message, Syncs.OwnedAndSentOnTick));
             }
             
-            foreach (var syncSession in createdToSendOverNetwork)
+            foreach (var networkSync in createdToSendOverNetwork)
             {
-                syncSession.OnOwnedDataSyncedToAll();
+                networkSync.OnOwnedDataSyncedToAll();
             }
-            foreach (var syncSession in updatedToSendOverNetwork)
+            foreach (var networkSync in updatedToSendOverNetwork)
             {
-                syncSession.OnOwnedDataSyncedToAll();
+                networkSync.OnOwnedDataSyncedToAll();
             }
-            foreach (var syncSession in Syncs.OwnedAndSentOnTick)
+            foreach (var networkSync in Syncs.OwnedAndSentOnTick)
             {
-                syncSession.OnOwnedDataSyncedToAll();
+                networkSync.OnOwnedDataSyncedToAll();
             }
         }
         
@@ -116,9 +116,9 @@ namespace Rip2p.Session
         {
             if (DetailedLogging && connection.Id != ClientId)
             {
-                foreach (var syncSession in Syncs.All.OrderBy(x => x.Transform.GetAbsolutePath()))
+                foreach (var networkSync in NetworkSync.All.OrderBy(x => x.Transform.GetAbsolutePath()))
                 {
-                    Debug.Log($"Sending create message to client \"{connection.Id}\" for:\n{syncSession}");
+                    Debug.Log($"Sending create message to client \"{connection.Id}\" for:\n{networkSync}");
                 }
             }
             
@@ -134,7 +134,7 @@ namespace Rip2p.Session
                     
                     if (connection.Id != ClientId)
                     {
-                        WriteCreateSyncObjects(message, Syncs.All.OrderBy(x => x.Transform.GetAbsolutePath()));
+                        WriteCreateSyncObjects(message, NetworkSync.All.OrderBy(x => x.Transform.GetAbsolutePath()));
                     }
                 },
                 connection.Id);
@@ -155,23 +155,23 @@ namespace Rip2p.Session
             _idRangeService.FreeRange(connection.SyncIdMin);
             
             // Delete syncs owned by this connection
-            if (!Syncs.ByClientId.TryGetValue(connection.Id, out var syncSessions))
+            if (!Syncs.ByClientId.TryGetValue(connection.Id, out var networkSyncs))
             {
                 return;
             }
 
             if (DetailedLogging)
             {
-                foreach (var syncSession in syncSessions)
+                foreach (var networkSync in networkSyncs)
                 {
-                    Debug.Log($"Sending delete message to all clients for:\n{syncSession}");
+                    Debug.Log($"Sending delete message to all clients for:\n{networkSync}");
                 }
             }
             
             SendToAllClientsIncludingMyself(
                 MessageSendMode.Reliable,
                 NetworkMessageType.DeleteSyncObjects,
-                message => WriteDeleteSyncObjects(message, syncSessions.Select(x => x.Id)));
+                message => WriteDeleteSyncObjects(message, networkSyncs.Select(x => x.Id)));
         }
 
         protected override void OnMyClientDisconnected(ushort clientId)
@@ -237,18 +237,18 @@ namespace Rip2p.Session
         
         private void WriteSyncData(
             Message message,
-            IEnumerable<NetworkSyncSession> syncSessions)
+            IEnumerable<NetworkSync> networkSyncs)
         {
-            foreach (var syncSession in syncSessions)
+            foreach (var networkSync in networkSyncs)
             {
-                WriteSyncData(message, syncSession);
+                WriteSyncData(message, networkSync);
             }
         }
 
-        private void WriteSyncData(Message message, NetworkSyncSession syncSession)
+        private void WriteSyncData(Message message, NetworkSync networkSync)
         {    
-            message.AddUShort(syncSession.Id);
-            syncSession.WriteTo(message);
+            message.AddUShort(networkSync.Id);
+            networkSync.WriteTo(message);
         }
 
         private void ReadSyncData(Message message)
@@ -261,13 +261,13 @@ namespace Rip2p.Session
                 var data = NetworkDataWrapper.GetFromCache(dataType);
                 data.Value.ReadFrom(message);
                 
-                if(Syncs.ById.TryGetValue(id, out var syncSession))
+                if(Syncs.ById.TryGetValue(id, out var networkSync))
                 {
-                    syncSession.OnReceivedData(data);
+                    networkSync.OnReceivedData(data);
                     
-                    if (DetailedLogging && !syncSession.SendDataOnTick)
+                    if (DetailedLogging && !networkSync.SendDataOnTick)
                     {
-                        Debug.Log($"Received data update for:\n{syncSession}");
+                        Debug.Log($"Received data update for:\n{networkSync}");
                     }
                 }
                 
@@ -277,14 +277,14 @@ namespace Rip2p.Session
         
         private void WriteCreateSyncObjects(
             Message message,
-            IEnumerable<NetworkSyncSession> syncSessions)
+            IEnumerable<NetworkSync> networkSyncs)
         {
-            foreach (var syncSession in syncSessions)
+            foreach (var networkSync in networkSyncs)
             {
-                message.AddUShort(syncSession.OwnerClientId);
-                message.AddUShort(syncSession.Id);
-                message.AddString(syncSession.Transform.GetAbsolutePath());
-                syncSession.WriteTo(message);
+                message.AddUShort(networkSync.OwnerClientId);
+                message.AddUShort(networkSync.Id);
+                message.AddString(networkSync.Transform.GetAbsolutePath());
+                networkSync.WriteTo(message);
             }
         }
 
@@ -304,20 +304,20 @@ namespace Rip2p.Session
                 var data = NetworkDataWrapper.GetFromCache(dataType);
                 data.Value.ReadFrom(message);
 
-                var syncSession = Syncs.GetOrCreateSyncSession(
+                var networkSync = Syncs.GetOrCreateNetworkSync(
                     id,
                     ownerClientId,
                     path,
                     dataTypeId, 
                     data,
                     rootGameObjects);
-                if (syncSession != null)
+                if (networkSync != null)
                 {
-                    syncSession.OnReceivedData(data);
+                    networkSync.OnReceivedData(data);
                     
                     if (DetailedLogging)
                     {
-                        Debug.Log($"Client received create message for:\n{syncSession}");
+                        Debug.Log($"Client received create message for:\n{networkSync}");
                     }
                 }
 
@@ -325,11 +325,11 @@ namespace Rip2p.Session
             }
         }
 
-        private void WriteDeleteSyncObjects(Message message, IEnumerable<ushort> syncSessionIds)
+        private void WriteDeleteSyncObjects(Message message, IEnumerable<ushort> networkSyncIds)
         {
-            foreach (var syncSessionId in syncSessionIds)
+            foreach (var networkSyncId in networkSyncIds)
             {
-                message.AddUShort(syncSessionId);
+                message.AddUShort(networkSyncId);
             }
         }
         
@@ -338,9 +338,9 @@ namespace Rip2p.Session
             while (message.UnreadLength > 0)
             {
                 var networkSyncId = message.GetUShort();
-                if (Syncs.ById.TryGetValue(networkSyncId, out var syncSession))
+                if (Syncs.ById.TryGetValue(networkSyncId, out var networkSync))
                 {
-                    syncSession.Destroy();
+                    networkSync.Destroy();
                 }
             }
         }

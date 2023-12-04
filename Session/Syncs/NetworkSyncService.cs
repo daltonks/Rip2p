@@ -12,22 +12,19 @@ namespace Rip2p.Session.Syncs
 {
     public class NetworkSyncService : IDisposable
     {
-        public IEnumerable<NetworkSyncSession> All => _sessionToSyncMap.Keys;
-        public IReadOnlyCollection<NetworkSyncSession> SentOnTick => _sentOnTick;
-        public IReadOnlyCollection<NetworkSyncSession> Owned => _owned;
-        public IReadOnlyCollection<NetworkSyncSession> OwnedAndSentOnTick => _ownedAndSentOnTick;
-        public IReadOnlyDictionary<ushort, NetworkSyncSession> ById => _byId;
-        public IReadOnlyDictionary<ushort, HashSet<NetworkSyncSession>> ByClientId => _byClientId;
+        public IReadOnlyCollection<NetworkSync> SentOnTick => _sentOnTick;
+        public IReadOnlyCollection<NetworkSync> Owned => _owned;
+        public IReadOnlyCollection<NetworkSync> OwnedAndSentOnTick => _ownedAndSentOnTick;
+        public IReadOnlyDictionary<ushort, NetworkSync> ById => _byId;
+        public IReadOnlyDictionary<ushort, HashSet<NetworkSync>> ByClientId => _byClientId;
 
-        private readonly Dictionary<NetworkSync, NetworkSyncSession> _syncToSessionMap = new();
-        private readonly Dictionary<NetworkSyncSession, NetworkSync> _sessionToSyncMap = new();
-        private readonly HashSet<NetworkSyncSession> _sentOnTick = new();
-        private readonly HashSet<NetworkSyncSession> _owned = new();
-        private readonly HashSet<NetworkSyncSession> _ownedAndSentOnTick = new();
-        private readonly Dictionary<ushort, NetworkSyncSession> _byId = new();
-        private readonly Dictionary<ushort, HashSet<NetworkSyncSession>> _byClientId = new();
+        private readonly HashSet<NetworkSync> _sentOnTick = new();
+        private readonly HashSet<NetworkSync> _owned = new();
+        private readonly HashSet<NetworkSync> _ownedAndSentOnTick = new();
+        private readonly Dictionary<ushort, NetworkSync> _byId = new();
+        private readonly Dictionary<ushort, HashSet<NetworkSync>> _byClientId = new();
 
-        private readonly HashSet<NetworkSyncSession> _dirtied = new();
+        private readonly HashSet<NetworkSync> _dirtied = new();
 
         private ushort _maxId;
         private ushort _nextId;
@@ -48,8 +45,8 @@ namespace Rip2p.Session.Syncs
             
             foreach (var networkSync in NetworkSync.All.Where(x => x.IsOwned))
             {
-                var syncSession = Add(GenerateId(), _clientId, networkSync);
-                syncSession.OnDirtied();
+                Add(GenerateId(), _clientId, networkSync);
+                networkSync.OnDirtied();
             }
         }
 
@@ -59,8 +56,7 @@ namespace Rip2p.Session.Syncs
             {
                 return;
             }
-            var syncSession = Add(GenerateId(), _clientId, message.NetworkSync);
-            syncSession.OnDirtied();
+            Add(GenerateId(), _clientId, message.NetworkSync);
         }
 
         private ushort GenerateId()
@@ -80,124 +76,112 @@ namespace Rip2p.Session.Syncs
             return _nextId++;
         }
         
-        private NetworkSyncSession Add(
+        private void Add(
             ushort id, 
             ushort ownerClientId,
             NetworkSync networkSync)
         {
-            var syncSession = new NetworkSyncSession(id, ownerClientId, networkSync);
-            syncSession.Dirtied += OnSessionDataDirtied;
+            networkSync.OnSessionBegin(id, ownerClientId);
+            networkSync.Dirtied += OnNetworkSyncDirtied;
+            networkSync.DestroyBegin += OnNetworkSyncDestroyBegin;
 
-            _syncToSessionMap[networkSync] = syncSession;
-            _sessionToSyncMap[syncSession] = networkSync;
-
-            _byId[id] = syncSession;
+            _byId[id] = networkSync;
             
             if (!_byClientId.TryGetValue(ownerClientId, out var byClientIdSet))
             {
-                byClientIdSet = _byClientId[ownerClientId] = new HashSet<NetworkSyncSession>();
+                byClientIdSet = _byClientId[ownerClientId] = new HashSet<NetworkSync>();
             }
-            byClientIdSet.Add(syncSession);
+            byClientIdSet.Add(networkSync);
             
             if (networkSync.SendDataOnTick)
             {
-                _sentOnTick.Add(syncSession);
+                _sentOnTick.Add(networkSync);
             }
 
             if (networkSync.IsOwned)
             {
-                _owned.Add(syncSession);
+                _owned.Add(networkSync);
             }
 
             if (networkSync.SendDataOnTick && networkSync.IsOwned)
             {
-                _ownedAndSentOnTick.Add(syncSession);
+                _ownedAndSentOnTick.Add(networkSync);
             }
-
-            return syncSession;
         }
 
-        private void Remove(NetworkSyncSession syncSession)
+        private void Remove(NetworkSync networkSync)
         {
-            if (!_sessionToSyncMap.TryGetValue(syncSession, out var networkSync))
-            {
-                return;
-            }
+            networkSync.OnSessionEnd();
             
             if (NetworkSession.DetailedLogging)
             {
-                Debug.Log($"Removing:\n{syncSession}");
+                Debug.Log($"Removing:\n{networkSync}");
             }
             
-            syncSession.Dirtied -= OnSessionDataDirtied;
+            networkSync.Dirtied -= OnNetworkSyncDirtied;
+            networkSync.DestroyBegin -= OnNetworkSyncDestroyBegin;
 
-            if (syncSession.IsOwned)
+            if (networkSync.IsOwned)
             {
-                _freedIds.Add(syncSession.Id);
+                _freedIds.Add(networkSync.Id);
             }
 
-            _syncToSessionMap.Remove(networkSync);
-            _sessionToSyncMap.Remove(syncSession);
-
-            _sentOnTick.Remove(syncSession);
-            _owned.Remove(syncSession);
-            _ownedAndSentOnTick.Remove(syncSession);
+            _sentOnTick.Remove(networkSync);
+            _owned.Remove(networkSync);
+            _ownedAndSentOnTick.Remove(networkSync);
             
-            _byId.Remove(syncSession.Id);
+            _byId.Remove(networkSync.Id);
             
-            var byClientIdSet = _byClientId[syncSession.OwnerClientId];
-            byClientIdSet.Remove(syncSession);
+            var byClientIdSet = _byClientId[networkSync.OwnerClientId];
+            byClientIdSet.Remove(networkSync);
             if (!byClientIdSet.Any())
             {
-                _byClientId.Remove(syncSession.OwnerClientId);
+                _byClientId.Remove(networkSync.OwnerClientId);
             }
-            
-            syncSession.Dispose();
         }
-
-        private void OnSessionDataDirtied(NetworkSyncSession syncSession)
+        
+        private void OnNetworkSyncDestroyBegin(NetworkSync networkSync)
         {
-            _dirtied.Add(syncSession);
+            Remove(networkSync);
+        }
+        
+        private void OnNetworkSyncDirtied(NetworkSync networkSync)
+        {
+            _dirtied.Add(networkSync);
         }
 
-        private List<NetworkSyncSession> _createdToSendOverNetwork = new();
-        private readonly List<NetworkSyncSession> _updatedToSendOverNetwork = new();
+        private List<NetworkSync> _createdToSendOverNetwork = new();
+        private readonly List<NetworkSync> _updatedToSendOverNetwork = new();
         private readonly List<ushort> _deletedToSendOverNetwork = new();
-        private readonly List<NetworkSyncSession> _toRemove = new();
         public void Tick(
-            out IReadOnlyList<NetworkSyncSession> createdToSendOverNetwork,
-            out IReadOnlyList<NetworkSyncSession> updatedToSendOverNetwork,
+            out IReadOnlyList<NetworkSync> createdToSendOverNetwork,
+            out IReadOnlyList<NetworkSync> updatedToSendOverNetwork,
             out IReadOnlyList<ushort> deletedToSendOverNetwork)
         {
             _createdToSendOverNetwork.Clear();
             _updatedToSendOverNetwork.Clear();
             _deletedToSendOverNetwork.Clear();
             
-            foreach (var syncSession in _dirtied)
+            foreach (var networkSync in _dirtied)
             {
-                if (syncSession.IsOwned)
+                if (networkSync.IsOwned)
                 {
-                    if (syncSession.CreateMessageSent)
+                    if (networkSync.CreateMessageSent)
                     {
-                        if (syncSession.IsDestroyed)
+                        if (networkSync.IsDestroyed)
                         {
-                            _deletedToSendOverNetwork.Add(syncSession.Id);
+                            _deletedToSendOverNetwork.Add(networkSync.Id);
                         }
                         else
                         {
-                            _updatedToSendOverNetwork.Add(syncSession);
+                            _updatedToSendOverNetwork.Add(networkSync);
                         }
                     }
-                    else if (!syncSession.IsDestroyed)
+                    else if (!networkSync.IsDestroyed)
                     {
-                        syncSession.CreateMessageSent = true;
-                        _createdToSendOverNetwork.Add(syncSession);
+                        networkSync.CreateMessageSent = true;
+                        _createdToSendOverNetwork.Add(networkSync);
                     }
-                }
-
-                if (syncSession.IsDestroyed)
-                {
-                    _toRemove.Add(syncSession);
                 }
             }
             
@@ -210,11 +194,6 @@ namespace Rip2p.Session.Syncs
                     .OrderBy(x => x.Transform.GetAbsolutePath())
                     .ToList();
             }
-
-            foreach (var syncSession in _toRemove)
-            {
-                Remove(syncSession);
-            }
             
             createdToSendOverNetwork = _createdToSendOverNetwork;
             updatedToSendOverNetwork = _updatedToSendOverNetwork;
@@ -222,7 +201,7 @@ namespace Rip2p.Session.Syncs
         }
 
         [CanBeNull]
-        public NetworkSyncSession GetOrCreateSyncSession(
+        public NetworkSync GetOrCreateNetworkSync(
             ushort id,
             ushort ownerClientId,
             string path,
@@ -294,7 +273,9 @@ namespace Rip2p.Session.Syncs
                     
             if (networkSyncs.Count == 1)
             {
-                return Add(id, ownerClientId, networkSyncs[0]);
+                var networkSync = networkSyncs[0];
+                Add(id, ownerClientId, networkSync);
+                return networkSync;
             }
 
             Debug.LogError($"{networkSyncs.Count} {nameof(NetworkSync)}s found for " +
@@ -310,13 +291,12 @@ namespace Rip2p.Session.Syncs
             MessagingService.Instance.RemoveListener<NetworkSyncIsNowOwnedMessage>(OnSyncIsNowOwned);
             
             // Destroy non-owned syncs
-            var nonOwned = _syncToSessionMap
-                .Where(x => !x.Key.IsOwned)
+            var nonOwned = NetworkSync.All
+                .Where(x => !x.IsOwned)
                 .ToList();
-            foreach (var (sync, syncSession) in nonOwned)
+            foreach (var networkSync in nonOwned)
             {
-                Remove(syncSession);
-                sync.Destroy();
+                networkSync.Destroy();
             }
         }
     }
